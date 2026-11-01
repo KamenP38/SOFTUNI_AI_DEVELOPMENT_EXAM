@@ -1,0 +1,16 @@
+{% load booking_copy %}
+<div class="date-calendar" id="date-calendar" role="group" aria-label="{% t 'Choose a date' 'Изберете дата' %}" aria-describedby="filter-help calendar-help" hidden
+     data-unavailable="{% t 'unavailable' 'няма свободни часове' %}"
+     data-outside="{% t 'outside booking window' 'извън периода за резервации' %}">
+    <div class="calendar-header">
+        <button type="button" class="calendar-nav" data-month-step="-1" aria-label="{% t 'Previous month' 'Предишен месец' %}"><span aria-hidden="true">‹</span></button>
+        <span id="calendar-month" class="calendar-month" aria-live="polite"></span>
+        <button type="button" class="calendar-nav" data-month-step="1" aria-label="{% t 'Next month' 'Следващ месец' %}"><span aria-hidden="true">›</span></button>
+    </div>
+    <table class="calendar-grid" role="grid" aria-labelledby="calendar-month" aria-describedby="calendar-help">
+        <thead><tr></tr></thead>
+        <tbody></tbody>
+    </table>
+    <p class="calendar-selection muted" data-calendar-selection>{{ item.field.value|default:'' }}</p>
+    <p class="calendar-help muted" id="calendar-help">{% t 'Arrow keys move between days; Home/End move within the week; Page Up/Down change month. Enter selects an available date.' 'Стрелките сменят деня; Home/End преместват в седмицата; Page Up/Down сменят месеца. Enter избира свободна дата.' %}</p>
+</div>

@@ -15,6 +15,11 @@
         <a class="btn-primary" href="{% url 'booking:schedule' %}">
             {% t 'Open schedule' 'Отвори графика' %}
         </a>
+        {% if staff_barber %}
+            <a class="btn-outline" href="{% url 'booking:my_services' %}">
+                {% t 'My services' 'Моите услуги' %}
+            </a>
+        {% endif %}
         {% if owner %}
             <a class="btn-outline" href="{% url 'booking:barber_create' %}">
                 +

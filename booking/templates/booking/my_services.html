@@ -1,0 +1,40 @@
+{% extends 'booking/base.html' %}
+{% load booking_copy %}
+{% block title %}{% t 'My services' 'Моите услуги' %}{% endblock %}
+{% block content %}
+    <p class="eyebrow">{{ staff_barber.name }}</p>
+    <h1>{% t 'My services' 'Моите услуги' %}</h1>
+    <p class="intro">
+        {% t 'Choose the services you offer from the shop catalogue. Your selection updates availability for new bookings as soon as you save.' 'Изберете услугите, които предлагате, от каталога на салона. Изборът ви променя възможностите за нови резервации веднага след запазване.' %}
+    </p>
+    <section class="panel details-panel">
+        <form method="post" class="stack">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            <fieldset class="service-choices" aria-describedby="services-help services-inactive">
+                <legend>{{ form.services.label }}</legend>
+                <p id="services-help" class="muted">
+                    {% t 'You can clear every checkbox. Without an active service selected, clients cannot make new bookings with you. Return here to add active services again.' 'Можете да премахнете всички отметки. Без избрана активна услуга клиентите не могат да запазват нови часове при вас. Върнете се тук, за да добавите отново активни услуги.' %}
+                </p>
+                <p id="services-inactive" class="muted">
+                    {% t 'Inactive services can be kept or removed, but cannot be booked. After removal, they can only be added again when the owner activates them.' 'Неактивните услуги могат да се запазят или премахнат, но не могат да се резервират. След премахване могат да се добавят отново само когато собственикът ги активира.' %}
+                </p>
+                {{ form.services.errors }}
+                {% for choice in form.services %}
+                    <div class="service-choice">{{ choice }}</div>
+                {% empty %}
+                    <p class="notice">
+                        {% t 'No services are available to select. Ask the owner to add or activate a service in the catalogue.' 'Няма услуги за избор. Помолете собственика да добави или активира услуга в каталога.' %}
+                    </p>
+                {% endfor %}
+            </fieldset>
+            <p class="muted">
+                {% t 'Existing appointments keep their booked service, time, duration and price. The owner manages catalogue names, durations and prices.' 'Съществуващите резервации запазват услугата, часа, продължителността и цената си. Собственикът управлява имената, продължителността и цените в каталога.' %}
+            </p>
+            <button type="submit" class="btn-primary">{% t 'Save services' 'Запази услугите' %}</button>
+        </form>
+    </section>
+    <p class="card-links">
+        <a href="{% url 'booking:dashboard' %}">{% t 'Back to dashboard' 'Назад към таблото' %}</a>
+    </p>
+{% endblock %}

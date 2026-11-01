@@ -49,7 +49,7 @@ class BookingFixtures:
         return barber
 
     def reserve(self, **overrides):
-        data = dict(barber_id=self.barber.pk, service_id=self.service.pk, day=NOW.date(), clock=time(10), request_id=uuid.uuid4(), customer_name="Synthetic Client", phone="+359 88 123 4567", email="synthetic@example.invalid")
+        data = dict(barber_id=self.barber.pk, service_id=self.service.pk, day=NOW.date(), clock=time(10), request_id=uuid.uuid4(), customer_name="Synthetic Client", phone="+359881234567", email="synthetic@example.invalid")
         data.update(overrides)
         return reserve(**data)
 
@@ -63,7 +63,7 @@ class BookingFixtures:
         selected = self.selection(**{key: value for key, value in overrides.items() if key in ("service", "barber", "date", "time")})
         response = client.get(reverse("booking:book"), selected)
         self.assertEqual(response.status_code, 200)
-        data = dict(selected, request_id=client.session["booking_requests"][-1], customer_name="Synthetic Client", phone="+359 88 123 4567", email="synthetic@example.invalid")
+        data = dict(selected, request_id=client.session["booking_requests"][-1], customer_name="Synthetic Client", phone="+359881234567", email="synthetic@example.invalid")
         data.update(overrides)
         return data
 
@@ -74,13 +74,32 @@ class BookingFixtures:
 
 
 class AvailabilityTests(BookingFixtures, TestCase):
-    def test_phone_normalizes_and_enforces_ascii_digit_length(self):
-        self.assertEqual(normalize_phone(" +359 (88) 123-45.67 "), "+359881234567")
-        for valid in ("12345678", "+123456789012345"):
-            self.assertEqual(normalize_phone(valid), valid)
-        for invalid in ("", "1234567", "1234567890123456", "++12345678", "1234x6789", "１２３４５６７８", "123+45678"):
+    def test_phone_requires_bulgarian_prefix_and_nine_ascii_digits(self):
+        # The rule specifies digit count, not mobile operator prefixes.
+        for valid in ("0888123456", "+359888123456", "0123456789", "+359012345678"):
+            with self.subTest(valid=valid):
+                self.assertEqual(normalize_phone(valid), valid)
+                self.assertEqual(normalize_phone(f" \t{valid}\r\n"), valid)
+        for invalid in (
+            "", " \t", "088812345", "08881234567", "+35988812345", "+3598881234567",
+            "888123456", "359888123456", "+358888123456", "00359888123456",
+            "0888 123456", "0888-123456", "0(888)123456", "0888.123456",
+            "0888\n123456", "+359 888123456", "０888123456", "0８８８１２３４５６",
+            "+359٨٨٨١٢٣٤٥٦", "088812345x", "++359888123456",
+        ):
             with self.subTest(invalid=invalid), self.assertRaises(ValidationError):
                 normalize_phone(invalid)
+
+    def test_direct_reservation_rejects_invalid_phone_without_consuming_token(self):
+        token = uuid.uuid4()
+        for invalid in ("", "088812345", "+3598881234567", "0888 123456", "+358888123456"):
+            with self.subTest(phone=invalid), self.assertRaises(ValidationError):
+                self.reserve(phone=invalid, request_id=token)
+            self.assertFalse(Appointment.objects.exists())
+        appointment = self.reserve(phone=" 0888123456 ", request_id=token)
+        self.assertEqual(appointment.phone, "0888123456")
+        self.assertEqual(appointment.request_id, token)
+        self.assertEqual(Appointment.objects.count(), 1)
 
     def test_horizon_inclusive_and_sofia_local_day(self):
         for offset in (0, 28):
@@ -192,7 +211,10 @@ class AvailabilityTests(BookingFixtures, TestCase):
 
 class PublicBookingTests(BookingFixtures, TestCase):
     def test_bilingual_selection_details_errors_and_confirmation(self):
-        for language, label in (("bg", "Телефон"), ("en", "Phone")):
+        for language, label, help_text, valid_phone in (
+            ("bg", "Телефон", "Примери: 0888123456 / +359888123456.", "0888123456"),
+            ("en", "Phone", "Examples: 0888123456 / +359888123456.", "+359888123456"),
+        ):
             with self.subTest(language=language):
                 client = Client()
                 selected = self.selection(lang=language, time="11:00" if language == "en" else "10:00")
@@ -203,18 +225,39 @@ class PublicBookingTests(BookingFixtures, TestCase):
                 self.assertContains(response, 'type="tel"')
                 self.assertContains(response, f'time={selected["time"]}#details"')
                 self.assertContains(response, 'id="details"')
+                self.assertContains(response, help_text)
                 self.assertTrue(response.context["form"].fields["phone"].required)
-                payload = self.booking_payload(client=client, time="11:00" if language == "en" else "10:00")
-                invalid = client.post(reverse("booking:book"), dict(payload, phone="bad"))
-                self.assertEqual(invalid.status_code, 200)
-                self.assertIn("phone", invalid.context["form"].errors)
+                payload = self.booking_payload(client=client, time=selected["time"], phone=f" {valid_phone} ")
+                original_count = Appointment.objects.count()
+                for invalid_phone in (
+                    "bad", "", "088812345", "08881234567", "+35988812345",
+                    "+3598881234567", "0888 123456", "0" * 81, "0888123456\x00",
+                ):
+                    with self.subTest(phone=invalid_phone):
+                        invalid = client.post(reverse("booking:book"), dict(payload, phone=invalid_phone))
+                        self.assertEqual(invalid.status_code, 200)
+                        form = invalid.context["form"]
+                        self.assertEqual(set(form.errors), {"phone"})
+                        self.assertContains(invalid, "Enter 0 or +359 followed by exactly 9 digits")
+                        self.assertContains(invalid, "Въведете 0 или +359, следвани от точно 9 цифри")
+                        self.assertContains(invalid, "e.g. 0888123456 or +359888123456.")
+                        self.assertContains(invalid, help_text)
+                        self.assertEqual(form["phone"].value(), invalid_phone)
+                        for field in ("service", "barber", "date", "time", "request_id", "customer_name", "email"):
+                            self.assertEqual(str(form[field].value()), str(payload[field]))
+                            self.assertContains(invalid, str(form[field]), html=True)
+                        self.assertContains(invalid, str(form["phone"]), html=True)
+                        self.assertEqual(Appointment.objects.count(), original_count)
                 response = client.post(reverse("booking:book"), payload, follow=True)
                 self.assertEqual(response.status_code, 200)
+                self.assertEqual(len(response.redirect_chain), 1)
                 self.assertContains(response, "Synthetic Client")
-                self.assertContains(response, "+359881234567")
+                self.assertContains(response, valid_phone)
+                self.assertEqual(Appointment.objects.count(), original_count + 1)
+                self.assertEqual(Appointment.objects.get(request_id=payload["request_id"]).phone, valid_phone)
 
     def test_booking_session_nonce_required_and_recent_tokens_bounded(self):
-        forged = dict(self.selection(), request_id=str(uuid.uuid4()), customer_name="Synthetic Client", phone="12345678")
+        forged = dict(self.selection(), request_id=str(uuid.uuid4()), customer_name="Synthetic Client", phone="0888123456")
         self.assertEqual(self.client.post(reverse("booking:book"), forged).status_code, 403)
         first = self.booking_payload()
         for _ in range(30):
@@ -502,7 +545,7 @@ class OwnerBootstrapTests(TestCase):
 class PostgreSQLBookingTests(BookingFixtures, TransactionTestCase):
     def direct_appointment(self, **overrides):
         start = NOW.replace(hour=10)
-        data = dict(barber=self.barber, service=self.service, request_id=uuid.uuid4(), service_name=self.service.name, duration_minutes=30, price=self.service.price, starts_at=start, ends_at=start + timedelta(minutes=30), customer_name="Synthetic Client", phone="12345678")
+        data = dict(barber=self.barber, service=self.service, request_id=uuid.uuid4(), service_name=self.service.name, duration_minutes=30, price=self.service.price, starts_at=start, ends_at=start + timedelta(minutes=30), customer_name="Synthetic Client", phone="0888123456")
         data.update(overrides)
         return Appointment.objects.create(**data)
 

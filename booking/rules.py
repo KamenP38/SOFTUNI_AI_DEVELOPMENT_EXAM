@@ -1,22 +1,30 @@
 """All booking and schedule mutations serialize on the same barber row."""
 import re
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone as datetime_timezone
 from zoneinfo import ZoneInfo
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Prefetch
 from django.utils import timezone
 
 from catalogue.models import Service
 from .models import Appointment, Barber, DayOff, WorkingHours
 
 SOFIA = ZoneInfo("Europe/Sofia")
+PHONE_ERROR = (
+    "Enter 0 or +359 followed by exactly 9 digits (0–9), without spaces or separators, "
+    "e.g. 0888123456 or +359888123456. / "
+    "Въведете 0 или +359, следвани от точно 9 цифри (0–9), без интервали или разделители, "
+    "например 0888123456 или +359888123456."
+)
 
 
 def normalize_phone(value):
-    value = re.sub(r"[\s().-]", "", value)
-    if not re.fullmatch(r"\+?[0-9]{8,15}", value):
-        raise ValidationError("Enter 8–15 digits, optionally starting with +. / Въведете 8–15 цифри, по избор с +.")
+    value = value.strip()
+    if not re.fullmatch(r"(?:0|\+359)[0-9]{9}", value):
+        raise ValidationError(PHONE_ERROR)
     return value
 
 
@@ -43,21 +51,10 @@ def fits_shift(start, end, shifts, days_off):
     )
 
 
-def available_slots(barber, service, day, now=None):
-    now = now or timezone.now()
+def slots_for_shift(service, day, shift, appointments, now):
+    """Shared slot calculation; appointments contain only (start, end) pairs."""
     today = now.astimezone(SOFIA).date()
-    if not today <= day <= today + timedelta(days=28):
-        return []
-    eligible = (
-        barber.is_active
-        and barber.user.is_active
-        and service.is_active
-        and barber.services.filter(pk=service.pk).exists()
-    )
-    if not eligible:
-        return []
-    shift = barber.working_hours.filter(weekday=day.weekday()).first()
-    if not shift or barber.days_off.filter(date=day).exists():
+    if not shift or not today <= day <= today + timedelta(days=28):
         return []
     opening = datetime.combine(day, shift.opens_at)
     cursor = opening.replace(second=0, microsecond=0)
@@ -66,15 +63,6 @@ def available_slots(barber, service, day, now=None):
     if cursor < opening:
         cursor += timedelta(minutes=15)
     closing = datetime.combine(day, shift.closes_at)
-    day_start = datetime.combine(day, datetime.min.time(), tzinfo=SOFIA)
-    day_end = datetime.combine(day + timedelta(days=1), datetime.min.time(), tzinfo=SOFIA)
-    appointments = list(
-        barber.appointments.filter(
-            cancelled_at__isnull=True,
-            starts_at__lt=day_end,
-            ends_at__gt=day_start,
-        )
-    )
     slots = []
     while cursor < closing:
         start = local_datetime(day, cursor.time())
@@ -86,12 +74,94 @@ def available_slots(barber, service, day, now=None):
             ).astimezone(SOFIA)
             fits = start > now and end.date() == day and end.time() <= shift.closes_at
             no_overlap = all(
-                start >= item.ends_at or end <= item.starts_at for item in appointments
+                start >= booked_end or end <= booked_start
+                for booked_start, booked_end in appointments
             )
             if fits and no_overlap:
                 slots.append(start)
         cursor += timedelta(minutes=15)
     return slots
+
+
+def available_slots(barber, service, day, now=None):
+    """Read current availability, including inside the reservation transaction."""
+    now = now or timezone.now()
+    today = now.astimezone(SOFIA).date()
+    if not today <= day <= today + timedelta(days=28):
+        return []
+    if not (
+        barber.is_active and barber.user.is_active and service.is_active
+        and barber.services.filter(pk=service.pk).exists()
+    ):
+        return []
+    shift = barber.working_hours.filter(weekday=day.weekday()).first()
+    if not shift or barber.days_off.filter(date=day).exists():
+        return []
+    day_start = datetime.combine(day, datetime.min.time(), tzinfo=SOFIA)
+    day_end = datetime.combine(day + timedelta(days=1), datetime.min.time(), tzinfo=SOFIA)
+    appointments = list(barber.appointments.filter(
+        cancelled_at__isnull=True, starts_at__lt=day_end, ends_at__gt=day_start,
+    ).values_list("starts_at", "ends_at"))
+    return slots_for_shift(service, day, shift, appointments, now)
+
+
+class AvailabilitySnapshot:
+    """Request-local public inventory, loaded in six queries regardless of team size.
+
+    Only anonymous appointment intervals are read. The snapshot is never reused by
+    reserve(), which rechecks current availability under the barber row lock.
+    """
+
+    def __init__(self, now=None):
+        self.now = now or timezone.now()
+        today = self.now.astimezone(SOFIA).date()
+        self.dates = [today + timedelta(days=offset) for offset in range(29)]
+        self.services = list(Service.objects.filter(is_active=True))
+        self.barbers = list(Barber.objects.filter(
+            is_active=True, user__is_active=True,
+        ).prefetch_related(
+            Prefetch("services", queryset=Service.objects.filter(is_active=True)),
+            "working_hours",
+            Prefetch("days_off", queryset=DayOff.objects.filter(
+                date__gte=today, date__lte=self.dates[-1],
+            )),
+        ))
+        start = datetime.combine(today, datetime.min.time(), tzinfo=SOFIA)
+        end = datetime.combine(self.dates[-1] + timedelta(days=1), datetime.min.time(), tzinfo=SOFIA)
+        intervals = defaultdict(list)
+        for barber_id, booked_start, booked_end in Appointment.objects.filter(
+            barber_id__in=[barber.pk for barber in self.barbers],
+            cancelled_at__isnull=True, starts_at__lt=end, ends_at__gt=start,
+        ).values_list("barber_id", "starts_at", "ends_at"):
+            # Include cross-midnight bookings on every day they overlap.
+            for day in self.dates:
+                day_start = datetime.combine(day, datetime.min.time(), tzinfo=SOFIA)
+                day_end = day_start + timedelta(days=1)
+                if booked_start < day_end and booked_end > day_start:
+                    intervals[(barber_id, day)].append((booked_start, booked_end))
+        self.slots = {}
+        for barber in self.barbers:
+            shifts = {shift.weekday: shift for shift in barber.working_hours.all()}
+            days_off = {off.date for off in barber.days_off.all()}
+            for service in barber.services.all():
+                for day in self.dates:
+                    shift = None if day in days_off else shifts.get(day.weekday())
+                    slots = slots_for_shift(service, day, shift, intervals[(barber.pk, day)], self.now)
+                    if slots:
+                        self.slots[(str(service.pk), str(barber.pk), day.isoformat())] = slots
+
+    def matching_choices(self, values):
+        """Each field depends on the other two, never on its own current value."""
+        fields = ("service", "barber", "date")
+        choices = {field: set() for field in fields}
+        matches = False
+        for key in self.slots:
+            compatible = [not values[field] or values[field] == value for field, value in zip(fields, key)]
+            matches = matches or all(compatible)
+            for index, field in enumerate(fields):
+                if all(compatible[other] for other in range(3) if other != index):
+                    choices[field].add(key[index])
+        return choices, matches
 
 
 @transaction.atomic

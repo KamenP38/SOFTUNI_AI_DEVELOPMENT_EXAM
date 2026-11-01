@@ -1,13 +1,14 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import password_validators_help_text_html, validate_password
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Q
+from django.utils.formats import date_format
 
 from catalogue.models import Service
 from .models import Barber
-from .rules import normalize_phone, replace_hours
+from .rules import PHONE_ERROR, normalize_phone, replace_hours
 
 WEEKDAYS = [("Monday", "Понеделник"), ("Tuesday", "Вторник"), ("Wednesday", "Сряда"),
             ("Thursday", "Четвъртък"), ("Friday", "Петък"), ("Saturday", "Събота"), ("Sunday", "Неделя")]
@@ -31,34 +32,107 @@ class AssignedServicesField(forms.ModelMultipleChoiceField):
         return name
 
 
-class SelectionForm(forms.Form):
-    service = ServiceChoiceField(queryset=Service.objects.filter(is_active=True))
-    barber = forms.ModelChoiceField(queryset=Barber.objects.filter(is_active=True, user__is_active=True))
-    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+class AvailabilitySelect(forms.Select):
+    """Keep closed dates visible without offering them as new selections."""
 
-    def __init__(self, *args, language="bg", **kwargs):
+    def __init__(self, *args, disabled_values=(), available_values=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.disabled_values = set(disabled_values)
+        self.available_values = available_values
+
+    def create_option(self, name, value, label, selected, index, **kwargs):
+        option = super().create_option(name, value, label, selected, index, **kwargs)
+        if str(value) in self.disabled_values:
+            option["attrs"]["disabled"] = True
+        if self.available_values is not None and value:
+            option["attrs"]["data-available"] = "true" if str(value) in self.available_values else "false"
+        return option
+
+
+class SelectionForm(forms.Form):
+    service = ServiceChoiceField(queryset=Service.objects.filter(is_active=True), required=False)
+    barber = forms.ModelChoiceField(queryset=Barber.objects.filter(is_active=True, user__is_active=True), required=False)
+    date = forms.DateField(required=False, widget=forms.Select())
+
+    def __init__(self, *args, language="bg", availability=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["service"].language = language
         for key, en, bg in [("service", "Service", "Услуга"), ("barber", "Barber", "Бръснар"), ("date", "Date", "Дата")]:
             self.fields[key].label = bg if language == "bg" else en
-        service_id = self.data.get("service") if self.is_bound else self.initial.get("service")
-        if str(service_id or "").isdigit():
-            self.fields["barber"].queryset = self.fields["barber"].queryset.filter(services__pk=service_id)
+        if availability is not None:
+            self.configure_availability(availability, language)
+
+    def configure_availability(self, availability, language):
+        self.values = {key: str(self.data.get(key, "")) for key in ("service", "barber", "date")}
+        choices, self.has_matches = availability.matching_choices(self.values)
+        unavailable = "няма свободни часове" if language == "bg" else "unavailable"
+        prompt = "Изберете…" if language == "bg" else "Choose…"
+        labels = {
+            "service": {str(item.pk): self.fields["service"].label_from_instance(item) for item in availability.services},
+            "barber": {str(item.pk): item.name for item in availability.barbers},
+            "date": {day.isoformat(): date_format(day, "D, d M Y") for day in availability.dates},
+        }
+        for key, field in self.fields.items():
+            current = self.values[key]
+            options = [("", prompt)]
+            disabled = set()
+            for value, label in labels[key].items():
+                if value in choices[key]:
+                    options.append((value, label))
+                elif key == "date" or value == current:
+                    options.append((value, f"{label} — {unavailable}"))
+                    if value != current:
+                        disabled.add(value)
+            if current and current not in labels[key]:
+                options.append((current, f"{current} — {unavailable}"))
+            # A stale selected value remains enabled so Apply preserves it; the
+            # server rejects it and provides recovery links instead of replacing it.
+            field.widget = AvailabilitySelect(
+                choices=options, disabled_values=disabled,
+                attrs={"aria-describedby": "filter-help", "data-filter": key},
+                available_values=choices[key] if key == "date" else None,
+            )
+            if key == "date":
+                field.widget.attrs.update({
+                    "data-min-date": availability.dates[0].isoformat(),
+                    "data-max-date": availability.dates[-1].isoformat(),
+                })
+            if key != "date":
+                field.choices = options
 
 
 class BookingForm(SelectionForm):
     time = forms.TimeField(widget=forms.HiddenInput(), input_formats=["%H:%M"])
     request_id = forms.UUIDField(widget=forms.HiddenInput())
     customer_name = forms.CharField(min_length=2, max_length=100, widget=forms.TextInput(attrs={"autocomplete": "name"}))
-    phone = forms.CharField(max_length=80, widget=forms.TextInput(attrs={"type": "tel", "autocomplete": "tel"}))
+    phone = forms.CharField(
+        max_length=80,
+        widget=forms.TextInput(attrs={"type": "tel", "autocomplete": "tel"}),
+        error_messages={
+            "required": PHONE_ERROR,
+            "max_length": PHONE_ERROR,
+            "null_characters_not_allowed": PHONE_ERROR,
+        },
+    )
     email = forms.EmailField(required=False, widget=forms.EmailInput(attrs={"autocomplete": "email"}))
 
     def __init__(self, *args, language="bg", **kwargs):
         super().__init__(*args, language=language, **kwargs)
         for key, en, bg in [("customer_name", "Your name", "Вашето име"), ("phone", "Phone", "Телефон"), ("email", "Email (optional)", "Имейл (незадължително)")]:
             self.fields[key].label = bg if language == "bg" else en
+        self.fields["phone"].help_text = (
+            "0 или +359, следвани от точно 9 цифри (0–9), без интервали или разделители. "
+            "Примери: 0888123456 / +359888123456."
+            if language == "bg" else
+            "0 or +359 followed by exactly 9 digits (0–9), without spaces or separators. "
+            "Examples: 0888123456 / +359888123456."
+        )
         for field in ("service", "barber", "date"):
+            self.fields[field].required = True
             self.fields[field].widget = forms.HiddenInput()
+        service_id = self.data.get("service") if self.is_bound else self.initial.get("service")
+        if str(service_id or "").isdigit():
+            self.fields["barber"].queryset = self.fields["barber"].queryset.filter(services__pk=service_id)
 
     def clean_phone(self):
         return normalize_phone(self.cleaned_data["phone"])
@@ -183,6 +257,38 @@ class BarberForm(forms.Form):
         barber.services.set(data["services"])
         if shifts is not None:
             replace_hours(barber.pk, shifts)
+        return barber
+
+
+class MyServicesForm(forms.Form):
+    services = AssignedServicesField(
+        queryset=Service.objects.none(),
+        widget=forms.CheckboxSelectMultiple(),
+        required=False,
+    )
+
+    def __init__(self, *args, barber, language="bg", **kwargs):
+        self.barber = barber
+        kwargs.setdefault("initial", {})["services"] = barber.services.all()
+        super().__init__(*args, **kwargs)
+        field = self.fields["services"]
+        field.language = language
+        field.label = "Услуги, които предлагам" if language == "bg" else "Services I offer"
+        field.queryset = Service.objects.filter(
+            Q(is_active=True) | Q(barbers=barber)
+        ).distinct()
+
+    @transaction.atomic
+    def save(self):
+        barber = Barber.objects.select_for_update().select_related("user").get(pk=self.barber.pk)
+        if not barber.is_active or not barber.user.is_active:
+            raise PermissionDenied
+        # Revalidate current eligibility after acquiring reserve's barber lock:
+        # an inactive assignment removed in another request cannot be added back.
+        services = self.fields["services"].clean(
+            [service.pk for service in self.cleaned_data["services"]]
+        )
+        barber.services.set(services)
         return barber
 
 

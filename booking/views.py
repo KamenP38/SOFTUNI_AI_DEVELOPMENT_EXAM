@@ -1,6 +1,7 @@
 import hashlib
 import uuid
 from datetime import timedelta
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
@@ -17,10 +18,10 @@ from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.debug import sensitive_post_parameters
 
 from catalogue.models import Service
-from .forms import BarberForm, BookingForm, DayOffForm, HoursForm, SelectionForm, ServiceForm
+from .forms import BarberForm, BookingForm, DayOffForm, HoursForm, MyServicesForm, SelectionForm, ServiceForm
 from .models import Appointment, Barber
 from .permissions import active_barber, is_owner, require_edit, require_owner, staff_required
-from .rules import SOFIA, available_slots, cancel_appointment, change_day_off, replace_hours, reserve
+from .rules import SOFIA, AvailabilitySnapshot, cancel_appointment, change_day_off, replace_hours, reserve
 
 
 def language_for(request):
@@ -72,17 +73,6 @@ def rate_response(request):
 @require_http_methods(["GET", "POST"])
 def book(request):
     language = language_for(request)
-    today = timezone.localdate(timezone=SOFIA)
-    selection_data = request.GET.copy()
-    if selection_data.get("service", "").isdigit() and not selection_data.get("barber"):
-        first_barber = Barber.objects.filter(
-            is_active=True, user__is_active=True, services__pk=selection_data["service"]
-        ).first()
-        if first_barber:
-            selection_data["barber"] = str(first_barber.pk)
-        if not selection_data.get("date"):
-            selection_data["date"] = today.isoformat()
-    selection = SelectionForm(selection_data or None, language=language, initial={"date": today})
     form, slots, selected = None, [], None
     if request.method == "POST":
         # Replay authorized requests before validating mutable catalogue/availability.
@@ -112,10 +102,15 @@ def book(request):
             else:
                 remember(request.session, "booking_references", appointment.reference)
                 return redirect("booking:confirmation", reference=appointment.reference)
-        selection = SelectionForm(request.POST, language=language)
-    if selection.is_valid():
+    # Build after a failed POST too: a transaction conflict must refresh options.
+    availability = AvailabilitySnapshot()
+    selection_data = request.POST if request.method == "POST" else request.GET
+    selection = SelectionForm(selection_data, language=language, availability=availability)
+    if selection.is_valid() and all(selection.cleaned_data.values()):
         selected = selection.cleaned_data
-        slots = available_slots(selected["barber"], selected["service"], selected["date"])
+        slots = availability.slots.get((
+            str(selected["service"].pk), str(selected["barber"].pk), selected["date"].isoformat(),
+        ), [])
         if request.method == "GET" and request.GET.get("time"):
             chosen = next((slot for slot in slots if slot.strftime("%H:%M") == request.GET["time"]), None)
             if chosen:
@@ -124,8 +119,19 @@ def book(request):
                 form = BookingForm(language=language, initial={**selection_data.dict(), "request_id": token})
             else:
                 selection.add_error(None, "This time is unavailable. / Часът не е свободен.")
-    selection.fields["date"].widget.attrs.update(min=today.isoformat(), max=(today + timedelta(days=28)).isoformat())
-    return page(request, "book", {"selection": selection, "form": form, "slots": slots, "selected": selected})
+    filter_fields = []
+    for name in ("service", "barber", "date"):
+        remaining = {key: value for key, value in selection.values.items() if key != name and value}
+        filter_fields.append({
+            "field": selection[name],
+            "clear_url": "?" + urlencode({**remaining, "lang": language}) + "#visit-selection",
+            "has_value": bool(selection.values[name]),
+        })
+    return page(request, "book", {
+        "selection": selection, "filter_fields": filter_fields,
+        "no_matches": not selection.has_matches,
+        "form": form, "slots": slots, "selected": selected,
+    })
 
 
 def session_appointment(request, reference):
@@ -260,6 +266,28 @@ def barber_edit(request, pk=None):
                 messages.success(request, "Profile saved. / Профилът е запазен.")
                 return redirect("booking:dashboard")
     return page(request, "barber_edit", {"form": form, "hours": hours, "barber": barber})
+
+
+@never_cache
+@staff_required
+@require_http_methods(["GET", "POST"])
+def my_services(request):
+    if not request.barber:
+        raise PermissionDenied
+    language = language_for(request)
+    form = MyServicesForm(
+        request.POST if request.method == "POST" else None,
+        barber=request.barber, language=language,
+    )
+    if request.method == "POST" and form.is_valid():
+        try:
+            form.save()
+        except ValidationError as error:
+            form.add_error("services", error)
+        else:
+            messages.success(request, "Услугите са запазени." if language == "bg" else "Services saved.")
+            return redirect("booking:my_services")
+    return page(request, "my_services", {"form": form})
 
 
 @never_cache

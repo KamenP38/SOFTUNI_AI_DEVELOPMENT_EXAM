@@ -11,7 +11,7 @@
         {% t 'A little time for yourself.' 'Малко време за себе си.' %}
     </h1>
     <p class="intro">
-        {% t 'Choose a service, your barber and a date. No account needed.' 'Изберете услуга, бръснар и дата. Не е необходим профил.' %}
+        {% t 'Choose a service, barber and date in any order. No account needed.' 'Изберете услуга, бръснар и дата в произволен ред. Не е необходим профил.' %}
     </p>
     <div class="booking-grid">
         <section class="panel">
@@ -19,14 +19,42 @@
                 01 ·
                 {% t 'Your visit' 'Вашето посещение' %}
             </h2>
-            <form method="get" class="stack" id="visit-selection">
-                {{ selection.as_p }}
-                <button class="btn-primary" formnovalidate>
-                    {% t 'Show available times' 'Покажи свободните часове' %}
-                </button>
+            <form method="get" action="{% url 'booking:book' %}#visit-selection" class="stack" id="visit-selection" tabindex="-1">
+                <input type="hidden" name="lang" value="{{ language }}">
+                {{ selection.non_field_errors }}
+                {% if no_matches %}
+                    <p class="notice error" role="status">
+                        {% t 'No bookable times match these filters. Clear a selection or reset filters to explore other options. Your selections have been kept.' 'Няма свободни часове за тези филтри. Изчистете избор или нулирайте филтрите, за да видите други възможности. Изборите Ви са запазени.' %}
+                    </p>
+                {% endif %}
+                {% if form and not selected %}
+                    <div class="notice error" role="alert">{{ form.errors }}</div>
+                {% endif %}
+                {% for item in filter_fields %}
+                    <div class="filter-field">
+                        <div class="filter-label">
+                            {{ item.field.label_tag }}
+                            {% if item.has_value %}
+                                <a href="{{ item.clear_url }}" aria-label="{% t 'Clear' 'Изчисти' %} {{ item.field.label }}">{% t 'Clear' 'Изчисти' %}</a>
+                            {% endif %}
+                        </div>
+                        {{ item.field.errors }}
+                        {{ item.field }}
+                        {% if item.field.name == 'date' %}
+                            {% include 'booking/date_calendar.html' %}
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                <div class="filter-actions">
+                    <button class="btn-primary" formnovalidate>
+                        {% t 'Apply filters' 'Приложи филтрите' %}
+                    </button>
+                    <a href="{% url 'booking:book' %}?lang={{ language }}#visit-selection">{% t 'Reset filters' 'Нулирай филтрите' %}</a>
+                </div>
             </form>
-            <p class="muted">
-                {% t 'Select a service, then refresh to see its barbers. Book up to 28 days ahead. Times are in Sofia local time.' 'Изберете услуга и обновете, за да видите нейните бръснари. Резервирайте до 28 дни напред. Часовете са местно време за София.' %}
+            <p class="muted" id="filter-help">
+                {% t 'Each choice updates the other options, including when you choose a date. Unavailable dates are greyed out. Choose all three filters to see times. Book today through 28 days ahead, in Sofia local time.' 'Всеки избор обновява останалите възможности, включително при избор на дата. Недостъпните дати са в сиво. Изберете и трите филтъра, за да видите часовете. Резервирайте от днес до 28 дни напред по местно време за София.' %}
+                <span class="auto-refresh-note" hidden>{% t 'Filters refresh automatically when changed.' 'Филтрите се обновяват автоматично при промяна.' %}</span>
             </p>
         </section>
         <section class="panel">
@@ -40,7 +68,7 @@
                 </p>
                 <div class="slots">
                     {% for slot in slots %}
-                        <a class="slot" href="?service={{ selected.service.pk }}&amp;barber={{ selected.barber.pk }}&amp;date={{ selected.date|date:'Y-m-d' }}&amp;time={{ slot|date:'H:i' }}#details">
+                        <a class="slot" href="?lang={{ language }}&amp;service={{ selected.service.pk }}&amp;barber={{ selected.barber.pk }}&amp;date={{ selected.date|date:'Y-m-d' }}&amp;time={{ slot|date:'H:i' }}#details">
                             {{ slot|date:'H:i' }}
                         </a>
                     {% empty %}
@@ -51,13 +79,13 @@
                 </div>
             {% else %}
                 <p class="empty-state">
-                    {% t 'Your available times will appear here.' 'Свободните часове ще се покажат тук.' %}
+                    {% t 'Choose a service, barber and date to see available times.' 'Изберете услуга, бръснар и дата, за да видите свободните часове.' %}
                 </p>
             {% endif %}
         </section>
     </div>
-    {% if form %}
-        <section class="panel details-panel" id="details">
+    {% if form and selected %}
+        <section class="panel details-panel" id="details" tabindex="-1">
             <h2>
                 03 ·
                 {% t 'Confirm your details' 'Потвърдете данните си' %}
@@ -76,7 +104,7 @@
                     {{ selected.barber.name }} · {{ selected.date|date:'d.m.Y' }} · {{ form.time.value }}
                 </p>
             {% endif %}
-            <form method="post" class="stack">
+            <form method="post" action="?lang={{ language }}#details" class="stack">
                 {% csrf_token %}
                 {{ form.as_p }}
                 <p class="muted">
