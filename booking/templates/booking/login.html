@@ -1,0 +1,22 @@
+{% extends 'booking/base.html' %}
+{% load booking_copy %}
+{% block content %}
+    <section class="panel details-panel">
+        <p class="eyebrow">
+            {% t 'THE TEAM' 'ЕКИПЪТ' %}
+        </p>
+        <h1>
+            {% t 'Welcome back.' 'Добре дошли отново.' %}
+        </h1>
+        <p class="intro">
+            {% t 'Sign in to manage your shop or your schedule.' 'Влезте, за да управлявате салона или своя график.' %}
+        </p>
+        <form method="post" class="stack">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="btn-primary">
+                {% t 'Sign in' 'Вход' %}
+            </button>
+        </form>
+    </section>
+{% endblock %}

@@ -3,6 +3,7 @@ from html.parser import HTMLParser
 from io import StringIO
 from pathlib import Path
 from urllib.request import url2pathname
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -76,16 +77,80 @@ class AssetParser(HTMLParser):
     def __init__(self):
         super().__init__()
         self.urls = []
+        self.links = []
+        self.ids = []
+        self.images = []
+        self.current_link = None
 
     def handle_starttag(self, tag, attrs):
         attributes = dict(attrs)
+        if "id" in attributes:
+            self.ids.append(attributes["id"])
+        if tag == "a":
+            self.current_link = {**attributes, "text": ""}
+            self.links.append(self.current_link)
+        if tag == "img":
+            self.images.append(attributes)
         if tag in {"img", "script"} and "src" in attributes:
             self.urls.append(attributes["src"])
         if tag == "link" and "href" in attributes:
             self.urls.append(attributes["href"])
 
+    def handle_data(self, data):
+        if self.current_link is not None:
+            self.current_link["text"] += data
+
+    def handle_endtag(self, tag):
+        if tag == "a":
+            self.current_link = None
+
 
 class HomepageTests(TestCase):
+    def test_navigation_and_booking_links_have_real_destinations(self):
+        create_service()
+        for language, booking_labels in (
+            ("bg", {"Запази час"}),
+            ("en", {"Book Now", "Book an Appointment"}),
+        ):
+            with self.subTest(language=language):
+                response = self.client.get(reverse("catalogue:home"), {"lang": language})
+                parser = AssetParser()
+                parser.feed(response.content.decode())
+                self.assertEqual(len(parser.ids), len(set(parser.ids)))
+                self.assertTrue({"services", "gallery", "reviews", "contact"} <= set(parser.ids))
+                bookings = [link for link in parser.links if link["text"].strip() in booking_labels]
+                self.assertGreaterEqual(len(bookings), 2)
+                for link in parser.links:
+                    href = link.get("href", "")
+                    if href.startswith("#"):
+                        self.assertIn(href[1:], parser.ids)
+                for link in bookings:
+                    self.assertEqual(urlsplit(link["href"]).path, reverse("booking:book"))
+
+    def test_contact_hours_rating_and_gallery_are_server_rendered_in_both_languages(self):
+        for language, day_label, address, review in (
+            ("bg", "Понеделник – Неделя", "бул. Гоце Делчев 9", "Най-добрата бръснарница!"),
+            ("en", "Monday – Sunday", "9 Gotse Delchev Blvd", "Best Barber House!"),
+        ):
+            with self.subTest(language=language):
+                response = self.client.get(reverse("catalogue:home"), {"lang": language})
+                for text in ("Alan Barberhouse", day_label, address, review, "10:00 – 20:00", "4.7", "+359 88 977 1917"):
+                    self.assertContains(response, text)
+                parser = AssetParser()
+                parser.feed(response.content.decode())
+                phones = [link for link in parser.links if link.get("href", "").startswith("tel:")]
+                self.assertTrue(phones)
+                self.assertTrue(all(link["href"] == "tel:+359889771917" for link in phones))
+                maps = [link for link in parser.links if urlsplit(link.get("href", "")).hostname == "www.google.com"]
+                self.assertTrue(maps)
+                for link in maps:
+                    self.assertTrue(link["href"].startswith("https://www.google.com/maps/"))
+                    if link.get("target") == "_blank":
+                        self.assertIn("noopener", link.get("rel", "").split())
+                expected_images = {"haircut.jpg", "beard.jpg", "treatment.jpg", "interior-bright.jpg", "chairs.jpg", "storefront.jpg"}
+                self.assertTrue(expected_images <= {image["src"].rsplit("/", 1)[-1] for image in parser.images})
+                self.assertTrue(all(image.get("alt", "").strip() for image in parser.images))
+
     def test_public_homepage_displays_only_active_services_in_menu_order(self):
         last = create_service(name="Zulu service", display_order=2)
         first = create_service(name="Alpha service", display_order=1)
@@ -177,7 +242,7 @@ class HomepageLanguageTests(TestCase):
         self.assertContains(response, service.description_bg)
         self.assertNotContains(response, service.name)
         self.assertNotContains(response, service.description)
-        self.assertContains(response, "Вижте услугите")
+        self.assertContains(response, "Нашите услуги")
         self.assertContains(response, "35 мин")
         self.assertContains(response, "средно")
 
@@ -230,6 +295,25 @@ class HomepageLanguageTests(TestCase):
 
 
 class DemoServicesTests(TestCase):
+    def test_seed_uses_approved_service_durations_and_eur_prices(self):
+        call_command("seed_demo_services", stdout=StringIO())
+        expected = [
+            ("Classic Haircut", 30, Decimal("20.00")),
+            ("Beard Trim & Shape", 30, Decimal("15.00")),
+            ("Fade & Taper", 45, Decimal("25.00")),
+            ("Hot Towel Shave", 30, Decimal("25.00")),
+            ("Cut & Beard Combo", 60, Decimal("35.00")),
+            ("Kids Cut", 30, Decimal("15.00")),
+        ]
+        self.assertEqual(list(Service.objects.values_list("name", "duration_minutes", "price")), expected)
+        response = self.client.get(reverse("catalogue:home"), {"lang": "en"})
+        for name, duration, price in expected:
+            with self.subTest(name=name):
+                self.assertContains(response, escape(name))
+                self.assertContains(response, f"{duration} min")
+                self.assertContains(response, f"{price:.2f}")
+        self.assertContains(response, "EUR")
+
     def test_seed_creates_valid_demo_menu_and_is_idempotent(self):
         call_command("seed_demo_services", stdout=StringIO())
         initial = list(Service.objects.values())
@@ -245,7 +329,7 @@ class DemoServicesTests(TestCase):
 
     def test_seed_preserves_existing_service_edits_and_custom_services(self):
         call_command("seed_demo_services", stdout=StringIO())
-        service = Service.objects.get(name="Signature haircut")
+        service = Service.objects.get(name="Classic Haircut")
         service.description = "Shop-confirmed description"
         service.name_bg = "Редактирано име"
         service.description_bg = "Редактирано описание"

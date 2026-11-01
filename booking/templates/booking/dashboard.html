@@ -1,0 +1,84 @@
+{% extends 'booking/base.html' %}
+{% load booking_copy %}
+{% block content %}
+    <p class="eyebrow">
+        {% if owner %}
+            {% t 'SHOP OWNER' 'СОБСТВЕНИК' %}
+        {% else %}
+            {% t 'YOUR WORKSPACE' 'ВАШЕТО РАБОТНО МЯСТО' %}
+        {% endif %}
+    </p>
+    <h1>
+        {% t 'Everything for a good day.' 'Всичко за един добър ден.' %}
+    </h1>
+    <div class="actions">
+        <a class="btn-primary" href="{% url 'booking:schedule' %}">
+            {% t 'Open schedule' 'Отвори графика' %}
+        </a>
+        {% if owner %}
+            <a class="btn-outline" href="{% url 'booking:barber_create' %}">
+                +
+                {% t 'Add barber' 'Добави бръснар' %}
+            </a>
+            <a class="btn-outline" href="{% url 'booking:services' %}">
+                {% t 'Manage services' 'Управлявай услугите' %}
+            </a>
+        {% endif %}
+    </div>
+    <h2>
+        {% t 'The team' 'Екипът' %}
+    </h2>
+    <div class="team-grid">
+        {% for barber in barbers %}
+            <article class="panel">
+                <h3>
+                    {{ barber.name }}
+                </h3>
+                <p class="status">
+                    {% if barber.is_active and barber.user.is_active %}
+                        {% if barber.has_active_services %}
+                            {% t 'Accepting bookings' 'Приема резервации' %}
+                        {% else %}
+                            {% t 'Setup needed · assign an active service' 'Нужна е настройка · добавете активна услуга' %}
+                        {% endif %}
+                    {% else %}
+                        {% t 'Inactive · appointments retained' 'Неактивен · резервациите са запазени' %}
+                    {% endif %}
+                </p>
+                <p class="muted">
+                    {% for service in barber.services.all %}
+                        {% if language == 'bg' %}
+                            {{ service.name_bg|default:service.name }}
+                        {% else %}
+                            {{ service.name }}
+                        {% endif %}
+                        {% if not forloop.last %}
+                            ·
+                        {% endif %}
+                    {% empty %}
+                        {% t 'No services assigned' 'Няма добавени услуги' %}
+                    {% endfor %}
+                </p>
+                <div class="card-links">
+                    <a href="{% url 'booking:schedule' %}?barber={{ barber.pk }}">
+                        {% t 'View schedule' 'Виж графика' %}
+                    </a>
+                    {% if owner or staff_barber.pk == barber.pk %}
+                        <a href="{% url 'booking:hours' barber.pk %}">
+                            {% t 'Hours & days off' 'Работно време и почивки' %}
+                        </a>
+                    {% endif %}
+                    {% if owner %}
+                        <a href="{% url 'booking:barber_edit' barber.pk %}">
+                            {% t 'Edit profile' 'Редактирай профила' %}
+                        </a>
+                    {% endif %}
+                </div>
+            </article>
+        {% empty %}
+            <p class="panel">
+                {% t 'Add your first barber to start accepting bookings.' 'Добавете първия си бръснар, за да започнете да приемате резервации.' %}
+            </p>
+        {% endfor %}
+    </div>
+{% endblock %}

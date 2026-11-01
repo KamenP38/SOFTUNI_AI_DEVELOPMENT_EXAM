@@ -1,0 +1,93 @@
+{% extends 'booking/base.html' %}
+{% load booking_copy static %}
+{% block title %}
+    {% t 'Book a visit' 'Запази час' %}
+{% endblock %}
+{% block content %}
+    <p class="eyebrow">
+        {% t 'YOUR NEXT VISIT' 'ВАШЕТО СЛЕДВАЩО ПОСЕЩЕНИЕ' %}
+    </p>
+    <h1>
+        {% t 'A little time for yourself.' 'Малко време за себе си.' %}
+    </h1>
+    <p class="intro">
+        {% t 'Choose a service, your barber and a date. No account needed.' 'Изберете услуга, бръснар и дата. Не е необходим профил.' %}
+    </p>
+    <div class="booking-grid">
+        <section class="panel">
+            <h2>
+                01 ·
+                {% t 'Your visit' 'Вашето посещение' %}
+            </h2>
+            <form method="get" class="stack" id="visit-selection">
+                {{ selection.as_p }}
+                <button class="btn-primary" formnovalidate>
+                    {% t 'Show available times' 'Покажи свободните часове' %}
+                </button>
+            </form>
+            <p class="muted">
+                {% t 'Select a service, then refresh to see its barbers. Book up to 28 days ahead. Times are in Sofia local time.' 'Изберете услуга и обновете, за да видите нейните бръснари. Резервирайте до 28 дни напред. Часовете са местно време за София.' %}
+            </p>
+        </section>
+        <section class="panel">
+            <h2>
+                02 ·
+                {% t 'Choose your time' 'Изберете час' %}
+            </h2>
+            {% if selected %}
+                <p class="muted">
+                    {{ selected.barber.name }} · {{ selected.date|date:'d.m.Y' }}
+                </p>
+                <div class="slots">
+                    {% for slot in slots %}
+                        <a class="slot" href="?service={{ selected.service.pk }}&amp;barber={{ selected.barber.pk }}&amp;date={{ selected.date|date:'Y-m-d' }}&amp;time={{ slot|date:'H:i' }}#details">
+                            {{ slot|date:'H:i' }}
+                        </a>
+                    {% empty %}
+                        <p>
+                            {% t 'No available times for this selection. Try another date or barber.' 'Няма свободни часове за този избор. Опитайте друга дата или бръснар.' %}
+                        </p>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="empty-state">
+                    {% t 'Your available times will appear here.' 'Свободните часове ще се покажат тук.' %}
+                </p>
+            {% endif %}
+        </section>
+    </div>
+    {% if form %}
+        <section class="panel details-panel" id="details">
+            <h2>
+                03 ·
+                {% t 'Confirm your details' 'Потвърдете данните си' %}
+            </h2>
+            {% if selected %}
+                <p class="notice">
+                    {% if language == 'bg' %}
+                        {{ selected.service.name_bg|default:selected.service.name }}
+                    {% else %}
+                        {{ selected.service.name }}
+                    {% endif %}
+                    · {{ selected.service.duration_minutes }}
+                    {% t 'minutes' 'минути' %}
+                    · {{ selected.service.price|floatformat:2 }} EUR
+                    <br>
+                    {{ selected.barber.name }} · {{ selected.date|date:'d.m.Y' }} · {{ form.time.value }}
+                </p>
+            {% endif %}
+            <form method="post" class="stack">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <p class="muted">
+                    {% t 'Your details are used to manage this appointment. Keep this browser session to view or cancel it. No email or text message will be sent.' 'Данните Ви се използват за управление на резервацията. Запазете тази сесия на браузъра, за да я видите или отмените. Не се изпращат имейли или SMS.' %}
+                </p>
+                <button class="btn-primary">
+                    {% t 'Confirm appointment' 'Потвърди резервацията' %}
+                </button>
+            </form>
+        </section>
+    {% endif %}
+    <script src="{% static 'booking/booking.js' %}" defer>
+    </script>
+{% endblock %}

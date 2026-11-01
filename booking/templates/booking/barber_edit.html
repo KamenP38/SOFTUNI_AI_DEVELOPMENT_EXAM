@@ -1,0 +1,32 @@
+{% extends 'booking/base.html' %}
+{% load booking_copy %}
+{% block content %}
+    <p class="eyebrow">
+        {% t 'THE TEAM' 'ЕКИПЪТ' %}
+    </p>
+    <h1>
+        {% if barber %}
+            {{ barber.name }}
+        {% else %}
+            {% t 'Add a barber' 'Добави бръснар' %}
+        {% endif %}
+    </h1>
+    <section class="panel details-panel">
+        <p class="muted">
+            {% t 'Deactivating a barber stops new bookings and sign-in. Existing appointments remain visible to the owner; contact customers and cancel separately if needed.' 'Деактивирането спира новите резервации и достъпа. Съществуващите резервации остават видими за собственика; свържете се с клиентите и ги отменете отделно при нужда.' %}
+        </p>
+        <form method="post" class="stack">
+            {% csrf_token %}
+            {{ form.as_p }}
+            {% if hours %}
+                <h2>
+                    {% t 'Initial working hours' 'Начално работно време' %}
+                </h2>
+                {% include 'booking/hours_fields.html' %}
+            {% endif %}
+            <button class="btn-primary">
+                {% t 'Save barber' 'Запази бръснаря' %}
+            </button>
+        </form>
+    </section>
+{% endblock %}

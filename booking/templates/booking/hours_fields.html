@@ -1,0 +1,20 @@
+{% load booking_copy %}
+{{ hours.non_field_errors }}
+<p class="muted">
+    {% t 'Tick working days. Unticked days are closed. One continuous shift per day.' 'Отбележете работните дни. Неотбелязаните са почивни. Една непрекъсната смяна на ден.' %}
+</p>
+<div class="hours-rows">
+    {% for enabled, start, end in hours.rows %}
+        <div class="hours-row">
+            <label class="checkbox">
+                {{ enabled }} {{ enabled.label }}
+            </label>
+            <div>
+                {{ start.label_tag }}{{ start }}{{ start.errors }}
+            </div>
+            <div>
+                {{ end.label_tag }}{{ end }}{{ end.errors }}
+            </div>
+        </div>
+    {% endfor %}
+</div>

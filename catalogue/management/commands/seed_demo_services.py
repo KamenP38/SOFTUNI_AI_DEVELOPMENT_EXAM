@@ -7,67 +7,67 @@ from catalogue.models import Service
 
 DEMO_SERVICES = [
     (
-        "Signature haircut",
-        "A considered cut, shaped to suit you. Finished with a wash and style.",
-        40,
+        "Classic Haircut",
+        "A timeless cut tailored to your face shape and style. Includes wash, cut and finish.",
+        30,
+        "20.00",
+    ),
+    (
+        "Beard Trim & Shape",
+        "Precision beard grooming to define your look. Sculpted edges, clean lines.",
+        30,
+        "15.00",
+    ),
+    (
+        "Fade & Taper",
+        "Skin fade, low fade or mid fade — executed with surgical precision by our barbers.",
+        45,
         "25.00",
     ),
     (
-        "Skin fade",
-        "A seamless fade with clean edges and a carefully styled finish.",
-        45,
-        "28.00",
-    ),
-    (
-        "Beard sculpting",
-        "Shape, definition and a tidy finish, tailored to your beard.",
-        25,
-        "18.00",
-    ),
-    (
-        "Haircut & beard",
-        "The full refresh. A signature haircut paired with beard shaping.",
-        60,
-        "38.00",
-    ),
-    (
-        "Traditional shave",
-        "A close shave with a warm towel and a soothing finish.",
+        "Hot Towel Shave",
+        "The full traditional experience. Hot towel, straight razor, premium shaving cream.",
         30,
-        "22.00",
+        "25.00",
     ),
     (
-        "Scalp & hair treatment",
-        "A little extra care: a cleansing wash, scalp massage and conditioning.",
-        20,
+        "Cut & Beard Combo",
+        "The complete package. Haircut + beard trim together for the full gentleman look.",
+        60,
+        "35.00",
+    ),
+    (
+        "Kids Cut",
+        "Patient, friendly service for the little ones. Ages 3–12 welcome.",
+        30,
         "15.00",
     ),
 ]
 
 DEMO_TRANSLATIONS = {
-    "Signature haircut": (
+    "Classic Haircut": (
         "Класическо подстригване",
-        "Прецизно подстригване, съобразено с вас, с измиване и оформяне.",
+        "Вечен стил, съобразен с формата на лицето ви. Включва измиване, подстригване и финиширане.",
     ),
-    "Skin fade": (
-        "Скин фейд",
-        "Плавен преход, изчистени контури и внимателно оформен завършек.",
-    ),
-    "Beard sculpting": (
+    "Beard Trim & Shape": (
         "Оформяне на брада",
-        "Форма, ясни контури и спретнат завършек, съобразени с вашата брада.",
+        "Прецизно оформяне на брадата за дефиниран вид. Чисти линии и ясни контури.",
     ),
-    "Haircut & beard": (
-        "Подстригване и брада",
-        "Цялостно освежаване: класическо подстригване и оформяне на брадата.",
+    "Fade & Taper": (
+        "Фейд & Тейпър",
+        "Skin fade, нисък или среден фейд — изпълнен с хирургическа прецизност.",
     ),
-    "Traditional shave": (
-        "Класическо бръснене",
-        "Гладко бръснене с топла кърпа и успокояваща финална грижа.",
+    "Hot Towel Shave": (
+        "Бръснене с гореща кърпа",
+        "Пълното традиционно изживяване. Гореща кърпа, бръснач и първокласен крем.",
     ),
-    "Scalp & hair treatment": (
-        "Грижа за косата и скалпа",
-        "Допълнителна грижа с измиване, масаж на скалпа и подхранване.",
+    "Cut & Beard Combo": (
+        "Подстригване + Брада",
+        "Пълният пакет. Подстригване и оформяне на брада — за истинския джентълменски вид.",
+    ),
+    "Kids Cut": (
+        "Детско подстригване",
+        "Търпелива и приятелска услуга за малчуганите. Приемаме деца от 3 до 12 години.",
     ),
 }
 

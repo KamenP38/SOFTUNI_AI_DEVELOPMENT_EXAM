@@ -1,0 +1,83 @@
+{% load static booking_copy %}
+<!doctype html>
+<html lang="{{ language }}">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noindex, nofollow">
+        <meta name="theme-color" content="#0a0a0a">
+        <title>
+            {% block title %}
+                {% t 'Appointments' 'Резервации' %}
+            {% endblock %}
+            · {{ shop_name }}
+        </title>
+        <link rel="stylesheet" href="{% static 'catalogue/site.css' %}">
+        <link rel="stylesheet" href="{% static 'booking/booking.css' %}">
+    </head>
+    <body class="booking-site">
+        <a class="skip-link" href="#main">
+            {% t 'Skip to content' 'Към съдържанието' %}
+        </a>
+        <header class="booking-header">
+            <a class="nav-logo" href="{% url 'catalogue:home' %}">
+                {{ shop_name }}
+            </a>
+            <nav aria-label="{% t 'Navigation' 'Навигация' %}">
+                <a href="{% url 'booking:book' %}">
+                    {% t 'Book a visit' 'Запази час' %}
+                </a>
+                {% if owner or staff_barber %}
+                    <a href="{% url 'booking:dashboard' %}">
+                        {% t 'Dashboard' 'Табло' %}
+                    </a>
+                    <a href="{% url 'booking:schedule' %}">
+                        {% t 'Schedule' 'График' %}
+                    </a>
+                {% endif %}
+            </nav>
+            <div class="lang-toggle">
+                <a href="{% querystring lang='bg' %}" lang="bg" {% if language == 'bg' %}aria-current="true"{% endif %}>
+                    BG
+                </a>
+                <span aria-hidden="true">
+                    |
+                </span>
+                <a href="{% querystring lang='en' %}" lang="en" {% if language == 'en' %}aria-current="true"{% endif %}>
+                    EN
+                </a>
+            </div>
+        </header>
+        <main id="main" class="booking-main" tabindex="-1">
+            {% if messages %}
+                <div aria-live="polite">
+                    {% for message in messages %}
+                        <p class="notice {{ message.tags }}">
+                            {{ message }}
+                        </p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% block content %}
+            {% endblock %}
+        </main>
+        <footer class="booking-footer">
+            <p>
+                {{ shop_name }} ·
+                {% t 'All appointment times: Sofia' 'Всички часове: София' %}
+            </p>
+            {% if user.is_authenticated %}
+                <form method="post" action="{% url 'booking:logout' %}">
+                    {% csrf_token %}
+                    <button class="text-button">
+                        {% t 'Sign out' 'Изход' %}
+                    </button>
+                </form>
+            {% else %}
+                <a href="{% url 'booking:login' %}">
+                    {% t 'Staff sign in' 'Вход за екипа' %}
+                </a>
+            {% endif %}
+        </footer>
+    </body>
+</html>

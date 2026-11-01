@@ -1,0 +1,204 @@
+from django import forms
+from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import password_validators_help_text_html, validate_password
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.db.models import Q
+
+from catalogue.models import Service
+from .models import Barber
+from .rules import normalize_phone, replace_hours
+
+WEEKDAYS = [("Monday", "Понеделник"), ("Tuesday", "Вторник"), ("Wednesday", "Сряда"),
+            ("Thursday", "Четвъртък"), ("Friday", "Петък"), ("Saturday", "Събота"), ("Sunday", "Неделя")]
+
+
+class ServiceChoiceField(forms.ModelChoiceField):
+    language = "bg"
+
+    def label_from_instance(self, obj):
+        name = (obj.name_bg or obj.name) if self.language == "bg" else obj.name
+        return f"{name} · {obj.duration_minutes} min · {obj.price:.2f} EUR"
+
+
+class AssignedServicesField(forms.ModelMultipleChoiceField):
+    language = "bg"
+
+    def label_from_instance(self, obj):
+        name = (obj.name_bg or obj.name) if self.language == "bg" else obj.name
+        if not obj.is_active:
+            name += " (неактивна)" if self.language == "bg" else " (inactive)"
+        return name
+
+
+class SelectionForm(forms.Form):
+    service = ServiceChoiceField(queryset=Service.objects.filter(is_active=True))
+    barber = forms.ModelChoiceField(queryset=Barber.objects.filter(is_active=True, user__is_active=True))
+    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+
+    def __init__(self, *args, language="bg", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["service"].language = language
+        for key, en, bg in [("service", "Service", "Услуга"), ("barber", "Barber", "Бръснар"), ("date", "Date", "Дата")]:
+            self.fields[key].label = bg if language == "bg" else en
+        service_id = self.data.get("service") if self.is_bound else self.initial.get("service")
+        if str(service_id or "").isdigit():
+            self.fields["barber"].queryset = self.fields["barber"].queryset.filter(services__pk=service_id)
+
+
+class BookingForm(SelectionForm):
+    time = forms.TimeField(widget=forms.HiddenInput(), input_formats=["%H:%M"])
+    request_id = forms.UUIDField(widget=forms.HiddenInput())
+    customer_name = forms.CharField(min_length=2, max_length=100, widget=forms.TextInput(attrs={"autocomplete": "name"}))
+    phone = forms.CharField(max_length=80, widget=forms.TextInput(attrs={"type": "tel", "autocomplete": "tel"}))
+    email = forms.EmailField(required=False, widget=forms.EmailInput(attrs={"autocomplete": "email"}))
+
+    def __init__(self, *args, language="bg", **kwargs):
+        super().__init__(*args, language=language, **kwargs)
+        for key, en, bg in [("customer_name", "Your name", "Вашето име"), ("phone", "Phone", "Телефон"), ("email", "Email (optional)", "Имейл (незадължително)")]:
+            self.fields[key].label = bg if language == "bg" else en
+        for field in ("service", "barber", "date"):
+            self.fields[field].widget = forms.HiddenInput()
+
+    def clean_phone(self):
+        return normalize_phone(self.cleaned_data["phone"])
+
+
+class HoursForm(forms.Form):
+    def __init__(self, *args, barber=None, language="bg", **kwargs):
+        super().__init__(*args, **kwargs)
+        existing = {s.weekday: s for s in barber.working_hours.all()} if barber else {}
+        for day, names in enumerate(WEEKDAYS):
+            label = names[1] if language == "bg" else names[0]
+            shift = existing.get(day)
+            self.fields[f"open_{day}"] = forms.BooleanField(required=False, label=label, initial=bool(shift) if barber else True)
+            self.fields[f"start_{day}"] = forms.TimeField(required=False, label="От" if language == "bg" else "From",
+                widget=forms.TimeInput(attrs={"type": "time"}, format="%H:%M"), initial=shift.opens_at if shift else "10:00")
+            self.fields[f"end_{day}"] = forms.TimeField(required=False, label="До" if language == "bg" else "Until",
+                widget=forms.TimeInput(attrs={"type": "time"}, format="%H:%M"), initial=shift.closes_at if shift else "20:00")
+
+    def rows(self):
+        return [(self[f"open_{day}"], self[f"start_{day}"], self[f"end_{day}"]) for day in range(7)]
+
+    def clean(self):
+        data = super().clean()
+        shifts = {}
+        for day in range(7):
+            if data.get(f"open_{day}"):
+                start, end = data.get(f"start_{day}"), data.get(f"end_{day}")
+                if not start or not end or start >= end:
+                    raise ValidationError("Each working day needs a start before its end. / Всеки работен ден изисква начало преди края.")
+                shifts[day] = (start, end)
+        data["shifts"] = shifts
+        return data
+
+
+class DayOffForm(forms.Form):
+    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+
+    def __init__(self, *args, language="bg", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["date"].label = "Дата" if language == "bg" else "Date"
+
+
+class BarberForm(forms.Form):
+    username = forms.CharField(max_length=150)
+    name = forms.CharField(min_length=2, max_length=100)
+    password = forms.CharField(required=False, widget=forms.PasswordInput(), strip=False)
+    password_confirm = forms.CharField(required=False, widget=forms.PasswordInput(), strip=False)
+    services = AssignedServicesField(
+        queryset=Service.objects.filter(is_active=True),
+        widget=forms.CheckboxSelectMultiple(),
+        required=False,
+    )
+    is_active = forms.BooleanField(required=False, initial=True)
+
+    def __init__(self, *args, barber=None, language="bg", **kwargs):
+        self.barber = barber
+        initial = kwargs.setdefault("initial", {})
+        if barber:
+            initial.update(username=barber.user.username, name=barber.name, services=barber.services.all(), is_active=barber.is_active)
+        else:
+            initial.setdefault("services", Service.objects.filter(is_active=True))
+        super().__init__(*args, **kwargs)
+        self.fields["services"].language = language
+        if barber:
+            # Preserve existing inactive assignments without offering them to new accounts.
+            self.fields["services"].queryset = Service.objects.filter(
+                Q(is_active=True) | Q(barbers=barber)
+            ).distinct()
+        for key, en, bg in [("username", "Username", "Потребителско име"), ("name", "Display name", "Име"),
+                ("password", "Password (leave blank to keep)", "Парола (празно запазва текущата)"),
+                ("password_confirm", "Confirm password", "Потвърдете паролата"),
+                ("services", "Services", "Услуги"), ("is_active", "Active — accepts bookings", "Активен — приема резервации")]:
+            self.fields[key].label = bg if language == "bg" else en
+        if not barber:
+            self.fields["password"].required = True
+            self.fields["password"].label = "Парола" if language == "bg" else "Password"
+        self.fields["password"].help_text = password_validators_help_text_html()
+
+    def clean_username(self):
+        username = self.cleaned_data["username"]
+        field = get_user_model()._meta.get_field("username")
+        field.run_validators(username)
+        users = get_user_model().objects.filter(username=username)
+        if self.barber:
+            users = users.exclude(pk=self.barber.user_id)
+        if users.exists():
+            raise ValidationError("Username already exists. / Името вече съществува.")
+        return username
+
+    def clean(self):
+        data = super().clean()
+        if data.get("password"):
+            if data["password"] != data.get("password_confirm"):
+                self.add_error("password_confirm", "Passwords do not match. / Паролите не съвпадат.")
+            user = get_user_model()(username=data.get("username", ""), first_name=data.get("name", ""))
+            try:
+                validate_password(data["password"], user)
+            except ValidationError as error:
+                self.add_error("password", error)
+        return data
+
+    @transaction.atomic
+    def save(self, shifts=None):
+        data = self.cleaned_data
+        if self.barber:
+            barber = Barber.objects.select_for_update().select_related("user").get(pk=self.barber.pk)
+            user = barber.user
+        else:
+            user = get_user_model()()
+            barber = Barber(user=user)
+        user.username = data["username"]
+        user.is_active = data["is_active"]
+        # Barber accounts never receive admin access, including after profile edits.
+        user.is_staff = user.is_superuser = False
+        if data.get("password"):
+            user.set_password(data["password"])
+        user.save()
+        barber.user = user
+        barber.name = data["name"]
+        barber.is_active = data["is_active"]
+        barber.save()
+        barber.services.set(data["services"])
+        if shifts is not None:
+            replace_hours(barber.pk, shifts)
+        return barber
+
+
+class ServiceForm(forms.ModelForm):
+    def __init__(self, *args, language="bg", **kwargs):
+        super().__init__(*args, **kwargs)
+        for key, field in self.fields.items():
+            labels = self.Meta.labels[key].split(" / ")
+            field.label = labels[1] if language == "bg" else labels[0]
+        self.fields["duration_minutes"].help_text = "Продължителност на резервацията в минути." if language == "bg" else "Appointment duration in minutes."
+        self.fields["price"].help_text = "Цена в EUR." if language == "bg" else "Price in EUR."
+
+    class Meta:
+        model = Service
+        fields = ["name", "name_bg", "description", "description_bg", "duration_minutes", "price", "is_active", "display_order"]
+        labels = {"name": "English name / Име на английски", "name_bg": "Bulgarian name / Име на български",
+                  "description": "English description / Описание на английски", "description_bg": "Bulgarian description / Описание на български",
+                  "duration_minutes": "Minutes / Минути", "price": "Price EUR / Цена EUR", "is_active": "Active / Активна", "display_order": "Order / Подредба"}
+        widgets = {"description": forms.Textarea(attrs={"rows": 3}), "description_bg": forms.Textarea(attrs={"rows": 3})}

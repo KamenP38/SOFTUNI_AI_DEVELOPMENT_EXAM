@@ -4,90 +4,126 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="{{ copy.meta }} {{ shop_name }}.">
-    <meta name="theme-color" content="#f5f2eb">
+    <meta name="description" content="{{ copy.meta }}">
+    <meta name="theme-color" content="#0a0a0a">
     <title>{{ shop_name }} — {{ copy.title }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&amp;family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'catalogue/site.css' %}">
 </head>
 <body>
     <a class="skip-link" href="#main">{{ copy.skip }}</a>
-    <header class="site-header wrap">
-        <a class="wordmark" href="{% url 'catalogue:home' %}" aria-label="{{ shop_name }} {{ copy.home }}">
-            <span class="brand-mark" aria-hidden="true">A<span>⁄</span></span>
-            <span>{{ shop_name }}<small>{{ copy.tagline }}</small></span>
-        </a>
-        <div class="header-links">
+    <header class="site-header">
+        <a class="nav-logo" href="{% url 'catalogue:home' %}" aria-label="{{ shop_name }} {{ copy.home }}">{{ shop_name }}</a>
+        <div class="nav-right">
             <nav aria-label="{{ copy.navigation }}">
-                <a href="#services">{{ copy.services }}</a>
-                <a href="#the-space">{{ copy.space }}</a>
+                <ul class="nav-links">
+                    <li><a href="#services">{{ copy.nav_services }}</a></li>
+                    <li><a href="#gallery">{{ copy.nav_gallery }}</a></li>
+                    <li><a href="#reviews">{{ copy.nav_reviews }}</a></li>
+                    <li><a href="#contact">{{ copy.nav_contact }}</a></li>
+                    <li class="nav-book"><a class="btn-primary" href="{% url 'booking:book' %}">{{ copy.nav_book }}</a></li>
+                </ul>
             </nav>
-            <div class="language-switch" role="group" aria-label="{{ copy.language_label }}">
+            <div class="lang-toggle" role="group" aria-label="{{ copy.language_label }}">
                 <a href="?lang=bg" lang="bg" aria-label="Български" {% if language == 'bg' %}aria-current="true"{% endif %}>BG</a>
-                <span aria-hidden="true">|</span>
+                <span class="lang-divider" aria-hidden="true">|</span>
                 <a href="?lang=en" lang="en" aria-label="English" {% if language == 'en' %}aria-current="true"{% endif %}>EN</a>
             </div>
         </div>
     </header>
-
-    <main id="main">
-        <section class="hero wrap" aria-labelledby="hero-heading">
-            <div class="hero-copy">
-                <p class="eyebrow"><span aria-hidden="true"></span> {{ copy.eyebrow }}</p>
-                <h1 id="hero-heading">{{ copy.hero_one }}<br>{{ copy.hero_two }}<br><em>{{ copy.hero_three }}</em></h1>
-                <p class="hero-intro">{{ copy.intro }}</p>
-                <a class="button" href="#services">{{ copy.cta }} <span aria-hidden="true">↗</span></a>
-                <div class="hero-detail"><span class="detail-rule" aria-hidden="true"></span><p>{{ copy.detail_one }}<br>{{ copy.detail_two }}</p></div>
+    <main id="main" tabindex="-1">
+        <section class="hero" aria-labelledby="hero-heading">
+            <div class="hero-left">
+                <h1 class="hero-title" id="hero-heading">{{ copy.hero_one }}<br>{{ copy.hero_prefix }}<em>{{ copy.hero_two }}</em><br>{{ copy.hero_three }}</h1>
+                <p class="hero-sub">{{ copy.hero_sub }}</p>
+                <div class="hero-cta">
+                    <a class="btn-primary" href="{% url 'booking:book' %}">{{ copy.hero_book }}</a>
+                    <a class="btn-outline" href="#services">{{ copy.hero_services }}</a>
+                </div>
             </div>
-            <figure class="hero-photo">
-                <img src="{% static 'images/interior-bright.jpg' %}" alt="{{ copy.hero_alt }}" width="400" height="533" fetchpriority="high">
-                <figcaption><span>{{ copy.caption }}</span><span aria-hidden="true">{{ copy.photo_index }}</span></figcaption>
-            </figure>
+            <div class="hero-right">
+                <img class="hero-image" src="{% static 'images/interior-dark.jpg' %}" alt="{{ copy.hero_alt }}" width="400" height="533" fetchpriority="high">
+                <div class="hero-badge" aria-label="{{ copy.rating_label }}">
+                    <span class="badge-stars" aria-hidden="true">★★★★★</span>
+                    <span class="badge-num">4.7</span>
+                    <span class="badge-text">{{ copy.badge_text }}</span>
+                </div>
+            </div>
         </section>
-
-        <section class="services wrap" id="services" aria-labelledby="services-heading">
-            <div class="section-heading">
-                <div><p class="eyebrow">{{ copy.menu_eyebrow }}</p><h2 id="services-heading">{{ copy.menu_title }}</h2></div>
-                <p>{{ copy.menu_intro_one }}<br>{{ copy.menu_intro_two }}</p>
-            </div>
-            {% if show_demo_notice %}
-            <p class="demo-notice"><span>{{ copy.sample }}</span> {{ copy.sample_note }}</p>
-            {% endif %}
-            <ol class="service-menu">
+        <div class="gold-strip">
+            <ul class="strip-inner">{% for item in copy.strip %}<li>{{ item }}</li>{% endfor %}</ul>
+        </div>
+        <section class="section" id="services" aria-labelledby="services-heading">
+            <h2 class="section-title" id="services-heading">{{ copy.services_title }}</h2>
+            {% if show_demo_notice %}<p class="demo-notice"><strong>{{ copy.sample }}</strong> {{ copy.sample_note }}</p>{% endif %}
+            <div class="services-grid">
                 {% for service in services %}
-                <li class="service-row">
-                    <span class="service-number" aria-hidden="true">{{ forloop.counter|stringformat:"02d" }}</span>
-                    <div class="service-copy">
-                        <h3>{{ service.name }}</h3>
-                        <p>{{ service.description }}</p>
-                        <span class="duration">{{ service.duration_minutes }} {{ copy.minutes }} <span>{{ copy.average }}</span></span>
-                    </div>
-                    <span class="price"><span class="currency">EUR</span> {{ service.price|floatformat:2 }}</span>
-                </li>
-                {% empty %}
-                <li class="empty-menu">{{ copy.empty }}</li>
-                {% endfor %}
-            </ol>
+                <article class="service-card">
+                    <div class="service-num" aria-hidden="true">{{ forloop.counter|stringformat:"02d" }}</div>
+                    <h3 class="service-name">{{ service.name }}</h3>
+                    <p class="service-desc">{{ service.description }}</p>
+                    <p class="service-duration">{{ service.duration_minutes }} {{ copy.minutes }} · {{ copy.average }}</p>
+                    <p class="service-price">{{ service.price|floatformat:2 }} EUR</p>
+                </article>
+                {% empty %}<p class="service-card empty-menu">{{ copy.empty }}</p>{% endfor %}
+            </div>
             <p class="menu-footnote">{{ copy.footnote }}</p>
         </section>
-
-        <section class="space-section" id="the-space" aria-labelledby="space-heading">
-            <div class="wrap">
-                <div class="section-heading">
-                    <div><p class="eyebrow">{{ copy.space_eyebrow }}</p><h2 id="space-heading">{{ copy.space_title }}</h2></div>
-                    <p>{{ copy.space_intro_one }}<br>{{ copy.space_intro_two }} {{ shop_name }}.</p>
+        <section class="section gallery-section" id="gallery" aria-labelledby="gallery-heading">
+            <h2 class="section-title" id="gallery-heading">{{ copy.gal_title }}</h2>
+            <div class="gallery-grid">
+                {% for photo in copy.gallery %}
+                <figure class="gallery-item"><img src="{% static photo.image %}" alt="{{ photo.alt }}" width="400" height="533" loading="lazy"></figure>
+                {% endfor %}
+            </div>
+        </section>
+        <section class="reviews-section" id="reviews" aria-labelledby="reviews-heading">
+            <h2 class="section-label" id="reviews-heading">{{ copy.rev_label }}</h2>
+            <p class="section-title review-heading-stars" aria-hidden="true">★★★★★</p>
+            <div class="reviews-grid">
+                {% for review in copy.reviews %}
+                <figure class="review-card">
+                    <p class="review-stars" aria-label="{{ copy.five_stars }}">★★★★★</p>
+                    <blockquote class="review-text">{{ review }}</blockquote>
+                    <figcaption class="review-author">— {{ copy.review_author }}</figcaption>
+                </figure>
+                {% endfor %}
+            </div>
+        </section>
+        <section class="info-section" id="contact" aria-labelledby="hours-heading">
+            <div class="info-left">
+                <p class="section-label">{{ copy.hrs_label }}</p>
+                <h2 class="section-title" id="hours-heading">{% for line in copy.hours_lines %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</h2>
+                <ul class="hours-list"><li><span>{{ copy.h1 }}</span><span>10:00 – 20:00</span></li></ul>
+            </div>
+            <div class="info-right">
+                <div class="contact-item">
+                    <h3 class="contact-label">{{ copy.c_phone }}</h3>
+                    <p class="contact-value"><a href="tel:+359889771917">+359 88 977 1917</a></p>
                 </div>
-                <div class="space-gallery">
-                    <figure class="gallery-interior"><img src="{% static 'images/interior-dark.jpg' %}" alt="{{ copy.interior_alt }}" width="400" height="533" loading="lazy"><figcaption>{{ copy.space }}</figcaption></figure>
-                    <figure class="gallery-chair"><img src="{% static 'images/chairs.jpg' %}" alt="{{ copy.chair_alt }}" width="400" height="533" loading="lazy"><figcaption>{{ copy.chair_caption }}</figcaption></figure>
-                    <figure class="gallery-lounge"><img src="{% static 'images/lounge.jpg' %}" alt="{{ copy.lounge_alt }}" width="400" height="533" loading="lazy"><figcaption>{{ copy.lounge_caption }}</figcaption></figure>
+                <div class="contact-item">
+                    <h3 class="contact-label">{{ copy.c_addr }}</h3>
+                    <address class="contact-value">{% for line in copy.address_lines %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</address>
                 </div>
+                <div class="contact-item">
+                    <h3 class="contact-label">{{ copy.c_map }}</h3>
+                    <p class="contact-value"><a href="https://www.google.com/maps/search/?api=1&amp;query=Alan+Barberhouse+9+Gotse+Delchev+Sofia">{{ copy.c_map_link }}</a></p>
+                </div>
+                <div class="contact-item">
+                    <h3 class="contact-label">{{ copy.c_rating }}</h3>
+                    <p class="contact-value"><span aria-hidden="true">★★★★★</span> 4.7 / 5 — {{ copy.c_reviews }}</p>
+                </div>
+                <p class="call-note">{{ copy.call_note }}</p>
+                <a class="btn-primary contact-cta" href="tel:+359889771917">{{ copy.call_to_book }}</a>
             </div>
         </section>
     </main>
-
-    <footer class="site-footer wrap">
-        <div><p class="footer-name">{{ shop_name }}</p><p>{{ copy.footer_tagline }}</p></div>
-        <a href="#services">{{ copy.footer_link }} <span aria-hidden="true">↑</span></a>
+    <footer>
+        <p class="footer-logo">{{ shop_name }}</p>
+        <p class="footer-copy">© {% now "Y" %} {{ shop_name }} · {{ copy.footer_address }}</p>
+        <p class="footer-copy"><a href="{% url 'booking:login' %}">{% if language == 'bg' %}Вход за екипа{% else %}Staff sign in{% endif %}</a></p>
     </footer>
 </body>
 </html>

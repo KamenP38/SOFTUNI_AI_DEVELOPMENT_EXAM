@@ -1,0 +1,145 @@
+{% extends 'booking/base.html' %}
+{% load booking_copy %}
+{% block content %}
+    <p class="eyebrow">
+        {% t 'THE WORKING DAY' 'РАБОТНИЯТ ДЕН' %}
+    </p>
+    <h1>
+        {% t 'Schedule' 'График' %}
+    </h1>
+    <p class="intro">
+        {% t 'Colleagues see availability and booked blocks only. Customer details are visible to the assigned barber and shop owner.' 'Колегите виждат само наличност и заети часове. Данните на клиентите са видими за техния бръснар и собственика.' %}
+    </p>
+    <form method="get" class="filters panel">
+        {{ day_form.as_p }}
+        <p>
+            <label for="barber-filter">
+                {% t 'Barber' 'Бръснар' %}
+            </label>
+            <select name="barber" id="barber-filter">
+                <option value="">
+                    {% t 'All barbers' 'Всички бръснари' %}
+                </option>
+                {% for barber in choices %}
+                    <option value="{{ barber.pk }}" {% if selected_barber == barber.pk|stringformat:'s' %}selected{% endif %}>
+                        {{ barber.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </p>
+        <p>
+            <label for="view-filter">
+                {% t 'View' 'Изглед' %}
+            </label>
+            <select name="view" id="view-filter">
+                <option value="week" {% if span == 7 %}selected{% endif %}>
+                    {% t '7 days' '7 дни' %}
+                </option>
+                <option value="day" {% if span == 1 %}selected{% endif %}>
+                    {% t 'Day' 'Ден' %}
+                </option>
+            </select>
+        </p>
+        <button class="btn-primary">
+            {% t 'Show' 'Покажи' %}
+        </button>
+    </form>
+    <nav class="date-navigation">
+        <a href="{% querystring date=previous|date:'Y-m-d' %}">
+            ←
+            {% t 'Previous' 'Назад' %}
+        </a>
+        <a href="{% querystring date=next|date:'Y-m-d' %}">
+            {% t 'Next' 'Напред' %}
+            →
+        </a>
+    </nav>
+    {% for column in columns %}
+        <section class="schedule-section">
+            <div class="section-bar">
+                <h2>
+                    {{ column.barber.name }}
+                </h2>
+                {% if column.editable %}
+                    <a href="{% url 'booking:hours' column.barber.pk %}">
+                        {% t 'Edit hours & days off' 'Редактирай работно време и почивки' %}
+                    </a>
+                {% endif %}
+            </div>
+            <div class="schedule-days">
+                {% for day in column.days %}
+                    <article class="day-card">
+                        <h3>
+                            {{ day.date|date:'D, d.m' }}
+                        </h3>
+                        <p class="status">
+                            {% if day.shift %}
+                                {{ day.shift.opens_at|time:'H:i' }} – {{ day.shift.closes_at|time:'H:i' }}
+                            {% else %}
+                                {% t 'Closed / day off' 'Затворено / почивка' %}
+                            {% endif %}
+                        </p>
+                        {% for item in day.appointments %}
+                            <div class="appointment {% if item.cancelled_at %}cancelled{% endif %}">
+                                <strong>
+                                    {{ item.starts_at|date:'H:i' }} – {{ item.ends_at|date:'H:i' }}
+                                </strong>
+                                {% if item.private %}
+                                    <p>
+                                        {{ item.customer_name }}
+                                    </p>
+                                    <p class="muted">
+                                        {% if language == 'bg' %}
+                                            {{ item.service_name_bg|default:item.service_name }}
+                                        {% else %}
+                                            {{ item.service_name }}
+                                        {% endif %}
+                                        · {{ item.price|floatformat:2 }} EUR
+                                    </p>
+                                    <p>
+                                        <a href="tel:{{ item.phone }}">
+                                            {{ item.phone }}
+                                        </a>
+                                    </p>
+                                    {% if item.email %}
+                                        <p class="customer-email">
+                                            {{ item.email }}
+                                        </p>
+                                    {% endif %}
+                                    {% if item.cancelled_at %}
+                                        <p>
+                                            {% t 'Cancelled' 'Отменена' %}
+                                        </p>
+                                    {% else %}
+                                        <form method="post" action="{% url 'booking:staff_cancel' item.pk %}">
+                                            {% csrf_token %}
+                                            <button class="text-button">
+                                                {% t 'Cancel appointment' 'Отмени резервацията' %}
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                {% else %}
+                                    <p>
+                                        {% t 'Booked' 'Заето' %}
+                                    </p>
+                                {% endif %}
+                            </div>
+                        {% empty %}
+                            <p class="muted">
+                                {% if day.shift %}
+                                    {% t 'No bookings' 'Няма резервации' %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </p>
+                        {% endfor %}
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+    {% empty %}
+        <p class="panel">
+            {% t 'No barbers to show.' 'Няма бръснари за показване.' %}
+        </p>
+    {% endfor %}
+{% endblock %}

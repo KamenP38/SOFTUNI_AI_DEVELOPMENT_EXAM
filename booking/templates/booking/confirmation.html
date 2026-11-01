@@ -1,0 +1,81 @@
+{% extends 'booking/base.html' %}
+{% load booking_copy %}
+{% block content %}
+    <section class="panel details-panel">
+        <p class="eyebrow">
+            {% t 'YOUR VISIT' 'ВАШЕТО ПОСЕЩЕНИЕ' %}
+        </p>
+        <h1>
+            {% if appointment.cancelled_at %}
+                {% t 'Appointment cancelled' 'Резервацията е отменена' %}
+            {% else %}
+                {% t 'You are booked in.' 'Вашият час е запазен.' %}
+            {% endif %}
+        </h1>
+        <dl class="summary">
+            <dt>
+                {% t 'Service' 'Услуга' %}
+            </dt>
+            <dd>
+                {% if language == 'bg' %}
+                    {{ appointment.service_name_bg|default:appointment.service_name }}
+                {% else %}
+                    {{ appointment.service_name }}
+                {% endif %}
+            </dd>
+            <dt>
+                {% t 'Barber' 'Бръснар' %}
+            </dt>
+            <dd>
+                {{ appointment.barber.name }}
+            </dd>
+            <dt>
+                {% t 'When' 'Кога' %}
+            </dt>
+            <dd>
+                {{ appointment.starts_at|date:'d.m.Y H:i' }} – {{ appointment.ends_at|date:'H:i' }}
+            </dd>
+            <dt>
+                {% t 'Duration / price' 'Времетраене / цена' %}
+            </dt>
+            <dd>
+                {{ appointment.duration_minutes }}
+                {% t 'min' 'мин' %}
+                · {{ appointment.price|floatformat:2 }} EUR
+            </dd>
+            <dt>
+                {% t 'Name' 'Име' %}
+            </dt>
+            <dd>
+                {{ appointment.customer_name }}
+            </dd>
+            <dt>
+                {% t 'Phone' 'Телефон' %}
+            </dt>
+            <dd>
+                {{ appointment.phone }}
+            </dd>
+            <dt>
+                {% t 'Reference' 'Номер' %}
+            </dt>
+            <dd class="reference">
+                {{ appointment.reference }}
+            </dd>
+        </dl>
+        <p class="muted">
+            {% t 'This page works only in this browser session. Save the date now. To change your appointment, cancel it and book again.' 'Тази страница работи само в тази сесия на браузъра. Запишете датата. За промяна отменете резервацията и запазете нов час.' %}
+        </p>
+        {% if can_cancel %}
+            <form method="post" action="{% url 'booking:customer_cancel' appointment.reference %}" class="cancel-form">
+                {% csrf_token %}
+                <button class="btn-outline">
+                    {% t 'Cancel this appointment' 'Отмени тази резервация' %}
+                </button>
+            </form>
+        {% endif %}
+        <a href="{% url 'booking:book' %}">
+            {% t 'Book another visit' 'Запази друг час' %}
+            →
+        </a>
+    </section>
+{% endblock %}

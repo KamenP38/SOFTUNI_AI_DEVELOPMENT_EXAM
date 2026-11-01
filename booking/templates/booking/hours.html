@@ -1,0 +1,60 @@
+{% extends 'booking/base.html' %}
+{% load booking_copy %}
+{% block content %}
+    <p class="eyebrow">
+        {{ barber.name }}
+    </p>
+    <h1>
+        {% t 'Hours & days off' 'Работно време и почивки' %}
+    </h1>
+    <p class="intro">
+        {% t 'Changes cannot move or cancel existing appointments. Resolve conflicting appointments before changing hours.' 'Промените не местят и не отменят резервации. Разрешете конфликтите, преди да промените часовете.' %}
+    </p>
+    <div class="booking-grid">
+        <section class="panel">
+            <h2>
+                {% t 'Weekly hours' 'Седмично работно време' %}
+            </h2>
+            <form method="post" class="stack">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="hours">
+                {% include 'booking/hours_fields.html' %}
+                <button class="btn-primary">
+                    {% t 'Save weekly hours' 'Запази работното време' %}
+                </button>
+            </form>
+        </section>
+        <section class="panel">
+            <h2>
+                {% t 'Days off' 'Почивни дни' %}
+            </h2>
+            <form method="post" class="stack">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_off">
+                {{ off_form.as_p }}
+                <button class="btn-outline">
+                    {% t 'Add day off' 'Добави почивен ден' %}
+                </button>
+            </form>
+            <ul class="day-off-list">
+                {% for off in days_off %}
+                    <li>
+                        {{ off.date|date:'d.m.Y' }}
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="remove_off">
+                            <input type="hidden" name="date" value="{{ off.date|date:'Y-m-d' }}">
+                            <button class="text-button">
+                                {% t 'Remove day off' 'Премахни почивката' %}
+                            </button>
+                        </form>
+                    </li>
+                {% empty %}
+                    <li>
+                        {% t 'No extra days off.' 'Няма допълнителни почивни дни.' %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    </div>
+{% endblock %}

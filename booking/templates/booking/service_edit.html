@@ -1,0 +1,19 @@
+{% extends 'booking/base.html' %}
+{% load booking_copy %}
+{% block content %}
+    <h1>
+        {% t 'Service details' 'Данни за услугата' %}
+    </h1>
+    <section class="panel details-panel">
+        <p class="muted">
+            {% t 'Changes apply to new bookings. Existing appointments keep their original service, duration and price. Assign this service to barbers from their profiles.' 'Промените важат за новите резервации. Съществуващите запазват услугата, времетраенето и цената си. Добавете услугата към бръснарите от техните профили.' %}
+        </p>
+        <form method="post" class="stack">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="btn-primary">
+                {% t 'Save service' 'Запази услугата' %}
+            </button>
+        </form>
+    </section>
+{% endblock %}

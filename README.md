@@ -1,6 +1,8 @@
 # Alan Barberhouse
 
-A single-shop Django site with a bilingual, server-rendered homepage and an editable service catalogue. Bulgarian is the default; the **BG | EN** switch in the top-right corner selects a language and remembers it in the browser session. This first increment covers the homepage only. Booking, barber accounts and schedule management are future work.
+A single-shop Django site with a bilingual, server-rendered homepage, online appointments and custom owner/barber dashboards. Bulgarian is the default; the **BG | EN** switch selects a language and remembers it in the browser session. Owners manage the team, services and schedules through the branded dashboard without using Django admin.
+
+The homepage follows the supplied dark, cream and gold design: a split photo hero, service cards, six gallery photos, testimonials and hours/contact sections. Its main appointment links open `/book/`; the phone link remains available. The supplied address, daily 10:00–20:00 shop hours, 4.7 rating and three review excerpts are static reference content, not a live Google feed or newly verified claims. Individual barber availability comes from their saved schedules. Update both language dictionaries when shop details change.
 
 ## Local setup (Windows PowerShell)
 
@@ -18,27 +20,68 @@ $env:DJANGO_SECRET_KEY = (& .\.venv\Scripts\python.exe -c "from django.core.mana
 
 Open <http://127.0.0.1:8000/>. Stop the server with Ctrl+C. Environment variables above apply to the current PowerShell session; set them again in a new terminal. A `.env` file is **not** automatically loaded. Keep secrets out of source control.
 
-SQLite (`db.sqlite3`, ignored by Git) is the default for this initial local preview. PostgreSQL is the target database for the booking application, particularly its future concurrency rules. SQLite preview does not verify PostgreSQL behavior.
+SQLite (`db.sqlite3`, ignored by Git) remains the default for local preview and functional tests. PostgreSQL is required for the documented concurrent-booking guarantee. SQLite does not implement row locks or the PostgreSQL exclusion constraint; a successful SQLite test run is not evidence of production concurrency safety.
 
-## Manage services
+## Owner setup and everyday use
 
-While the server is running, create a local administrator in another configured terminal:
+After migrations, create the first shop owner interactively in a configured terminal:
 
 ```powershell
 $env:DJANGO_DEBUG = "1"
-.\.venv\Scripts\python.exe manage.py createsuperuser
+.\.venv\Scripts\python.exe manage.py create_shop_owner
 ```
 
-Use <http://127.0.0.1:8000/admin/> to create or edit services. Django's built-in admin requires staff access and the appropriate model permissions. No administrator credentials are shipped.
+The command prompts for a unique username and a confirmed password, applies Django password validation and hashing, and creates an ordinary active user with a `ShopManager` profile. It does not grant staff or superuser privileges. No credentials are shipped. Sign in at <http://127.0.0.1:8000/staff/login/>.
+
+From the dashboard, choose **Add barber**, set a username, confirmed password, display name and assigned services (active services start selected), then review the initial weekly hours (all days start selected at 10:00–20:00). Account, service assignments and initial hours save together. Barber accounts remain ordinary users without admin access. Use **Edit profile** for services, activation or a password reset; a blank password preserves it. Deactivation stops login/new bookings but retains appointments for the owner to manage. Existing inactive service assignments remain visible and editable; they never allow new bookings while inactive. The owner can also create/edit services in **Manage services**. Existing appointment snapshots do not change with catalogue edits.
+
+Owners can view and edit all schedules. Active barbers can edit their own weekly hours and days off, and view colleagues' working hours and anonymous booked blocks. A colleague never receives customer names, phone numbers, email addresses, booking references or cancellation controls. Owner/assigned-barber views show appointment details and cancellation buttons. Day and rolling seven-day views support a barber filter. Django admin remains an optional developer tool; everyday shop workflows do not require it.
+
+## Manage services
 
 - `name` and `description` are English; `name_bg` and `description_bg` are Bulgarian. Missing Bulgarian fields individually fall back to English. English service names are unique.
 - Duration is an **average** in whole minutes and must be greater than zero. Price is a decimal EUR amount and cannot be negative. Both form validators and database constraints enforce these numeric rules.
 - Only active services appear on the homepage. They sort by display order, then English name, then primary key. Both languages use the same order and values.
 - The six seeded services, their descriptions, times and EUR prices are **mock data chosen for this prototype**, not verified shop offerings. Public listings did not establish an official price list. The homepage labels this clearly in both languages.
 - `seed_demo_services` uses `get_or_create` by English name. It creates missing named examples without updating any existing fields, including translated fields or inactive state. Re-running it preserves edits. Renaming a seeded English name makes it a different entry: a later seed run can recreate its original name. Do not use the command as a synchronization tool or on a real catalogue.
-- After the actual catalogue is confirmed, replace the examples through admin, then set `SHOW_DEMO_NOTICE=0` to remove the sample notice.
+- Migration `0003_refresh_unchanged_demo_services` replaces the original six mock entries with the approved reference menu only when every original field is unchanged, including Bulgarian text, order and active state. It skips rows whose target English name already exists and does not add rows to an empty database. Its reverse operation likewise matches every new field and skips name collisions. Edited catalogue entries remain untouched; a reverse migration cannot distinguish an independently created row that exactly matches a new example.
+- After the actual catalogue is confirmed, replace the examples through **Manage services**, then set `SHOW_DEMO_NOTICE=0` to remove the sample notice.
 
-## Configuration
+The current illustrative menu is:
+
+| Service | Average duration | Price |
+| --- | --- | --- |
+| Classic Haircut | 30 min | 20.00 EUR |
+| Beard Trim & Shape | 30 min | 15.00 EUR |
+| Fade & Taper | 45 min | 25.00 EUR |
+| Hot Towel Shave | 30 min | 25.00 EUR |
+| Cut & Beard Combo | 60 min | 35.00 EUR |
+| Kids Cut | 30 min | 15.00 EUR |
+
+## Booking and schedule rules
+
+- `/book/` lets a customer choose an active service, eligible active barber (with an active user account), date and available start. Service duration/price are shown before confirmation. The customer supplies a 2–100 character name, mandatory phone and optional email. Phone validation strips spaces, parentheses, dots and hyphens and then requires 8–15 ASCII digits, optionally preceded by `+`. Email is validated if supplied. No account, payment, email or SMS delivery is involved.
+- Dates run from today through today + 28 days inclusive, in `Europe/Sofia`. Starts must be strictly future and on a quarter-hour wall-clock boundary, rounded up from opening. The full service duration must fit one continuous weekly shift; an absent shift or dated day off closes the day. Adjacent bookings are allowed, with no buffers or gap avoidance. Different barbers have independent calendars. Nonexistent/ambiguous daylight-saving starts are omitted.
+- `booking.rules.reserve` starts a transaction, locks the barber row, re-fetches the service, rechecks eligibility and availability, then stores immutable service-name/duration/price snapshots. Booking and schedule mutations use the same barber lock. PostgreSQL migration `booking.0002` enables `btree_gist` and adds the `booking_no_overlap` GiST exclusion on barber and `[starts_at, ends_at)` for noncancelled rows. PostgreSQL enforces this even if a write bypasses the application. The migration is deliberately a no-op on SQLite. A PostgreSQL role running migrations must be allowed to install the trusted extension (or have an administrator install it beforehand).
+- Each confirmation form has a session-issued UUID. Its unique database request ID makes retries idempotent; the session retains the most recent 30 issued IDs. Successful bookings add their random references to the most recent 30 authorized session references. Knowing a confirmation URL alone does not grant access. Keep the browser session to view/cancel; deleting cookies, logout or session expiry removes customer access. No recovery-by-phone/reference lookup is exposed.
+- Customer cancellation is POST-only, session-authorized and limited to appointments that have not started. Owners can cancel any appointment and active barbers their own, including past appointments. All cancellations retain records and release the occupied time. There is no rescheduling workflow: cancel and rebook.
+- Weekly-hours and day-off changes lock the barber and reject the entire update if any noncancelled appointment ending after now would no longer fit. The error lists conflicting dates/times. Schedule changes never silently cancel appointments. Profiles/service assignments can be deactivated without erasing existing bookings.
+- Private/customer pages are never cached. All changes require CSRF-protected POSTs; role and object permissions are checked on the server. Login uses a fixed internal destination. Passwords are excluded from Django error reports. A small cache-based per-IP throttle limits booking attempts to 30 and login attempts to 20 per 15 minutes. It trusts `REMOTE_ADDR`, not client forwarding headers. The default local-memory cache is per process and resets on restart; this is a development safeguard, not a distributed production abuse-control system.
+
+| Route | Purpose |
+| --- | --- |
+| `/book/` | Public service/barber/date/time selection and confirmation |
+| `/book/<reference>/` | Session-authorized appointment details |
+| `/book/<reference>/cancel/` | Customer cancellation (POST) |
+| `/staff/login/`, `/staff/logout/` | Staff sign-in and POST-only sign-out |
+| `/staff/` | Owner/barber dashboard |
+| `/staff/schedule/` | Day/seven-day calendar (`date`, `view=day`, `barber` filters) |
+| `/staff/barbers/new/`, `/staff/barbers/<id>/` | Owner account creation/profile editing |
+| `/staff/barbers/<id>/hours/` | Weekly hours and days off (owner or same barber) |
+| `/staff/appointments/<id>/cancel/` | Authorized staff cancellation (POST) |
+| `/staff/services/`, `/staff/services/new/`, `/staff/services/<id>/` | Owner catalogue management |
+
+## Environment configuration
 
 | Environment variable | Default / purpose |
 | --- | --- |
@@ -71,15 +114,20 @@ $env:POSTGRES_PORT = "5432"
 
 Use an isolated local database and synthetic data for tests. Do not point test commands at a production database. Moving from SQLite to PostgreSQL does not copy existing data.
 
+For PostgreSQL verification, use a disposable development role/database and the same `POSTGRES_*` variables, then run `manage.py test`. Django creates a separate `test_<POSTGRES_DB>` database; the role needs `CREATEDB` and permission to install `btree_gist` there. This validates the vendor-specific migration and any PostgreSQL-only concurrency tests. SQLite runs may intentionally skip PostgreSQL-specific tests. Never use production credentials or a production database for verification.
+
 Debug-off settings require a secret, enable HTTPS redirects and secure session/CSRF cookies. Deployment is not included: configure a production WSGI/ASGI server, HTTPS, allowed hosts and static-file serving before deploying. Review `manage.py check --deploy` against the intended environment. The development server is for local use only.
 
 ## Structure and assets
 
 - `config/`: settings and root routes, WSGI/ASGI entry points.
 - `catalogue/`: service model, admin, migrations, homepage view and seed command.
+- `booking/`: owner/barber profiles, hours, days off, appointment snapshots, forms, permissions, shared transactional rules, views and branded templates. `create_shop_owner` is the interactive owner bootstrap command.
+- `booking/static/booking/booking.js`: a small progressive enhancement refreshes eligible barbers when the service changes. Without JavaScript, **Show available times** submits the selection and refreshes the eligible list; all rules and validation remain on the server.
 - `catalogue/content.py`: small explicit BG/EN UI dictionaries. No translation compilation or JavaScript is needed. `?lang=bg` and `?lang=en` are the only accepted choices; invalid choices retain the previous valid session language or default Bulgarian.
 - `catalogue/templates/catalogue/home.html` and `catalogue/static/catalogue/site.css`: semantic homepage and responsive styling, with keyboard focus, a skip link and reduced-motion support.
-- `resources/images/`: supplied original photos, exposed as `images/...` through Django's staticfiles mapping. The homepage uses four shop photos; all eight supplied files remain available. No remote fonts, image services or frontend build step are required.
+- `resources/images/`: supplied original photos, exposed as `images/...` through Django's staticfiles mapping. The homepage uses `interior-dark.jpg` in the hero and six gallery photos; all eight supplied files remain available.
+- Playfair Display and Barlow are requested from Google Fonts with `display=swap`. Georgia and Arial/sans-serif fallbacks keep the page usable when external fonts are unavailable. Photos are served locally; no frontend build step or JavaScript is required. The gold service strip and rating badge are static, and reduced-motion preferences disable smooth scrolling and hover transitions.
 
 ## Checks
 

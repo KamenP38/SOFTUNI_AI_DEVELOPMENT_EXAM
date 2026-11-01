@@ -1,0 +1,48 @@
+{% extends 'booking/base.html' %}
+{% load booking_copy %}
+{% block content %}
+    <p class="eyebrow">
+        {% t 'THE MENU' 'МЕНЮТО' %}
+    </p>
+    <h1>
+        {% t 'Services' 'Услуги' %}
+    </h1>
+    <div class="actions">
+        <a class="btn-primary" href="{% url 'booking:service_create' %}">
+            +
+            {% t 'Add service' 'Добави услуга' %}
+        </a>
+    </div>
+    <div class="team-grid">
+        {% for service in services %}
+            <article class="panel">
+                <h2>
+                    {% if language == 'bg' %}
+                        {{ service.name_bg|default:service.name }}
+                    {% else %}
+                        {{ service.name }}
+                    {% endif %}
+                </h2>
+                <p>
+                    {{ service.duration_minutes }}
+                    {% t 'min' 'мин' %}
+                    · {{ service.price|floatformat:2 }} EUR
+                </p>
+                <p class="status">
+                    {% if service.is_active %}
+                        {% t 'Active' 'Активна' %}
+                    {% else %}
+                        {% t 'Inactive' 'Неактивна' %}
+                    {% endif %}
+                </p>
+                <a href="{% url 'booking:service_edit' service.pk %}">
+                    {% t 'Edit service' 'Редактирай услугата' %}
+                </a>
+            </article>
+        {% empty %}
+            <p>
+                {% t 'Add your first service.' 'Добавете първата си услуга.' %}
+            </p>
+        {% endfor %}
+    </div>
+{% endblock %}
