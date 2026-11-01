@@ -6,7 +6,7 @@ from urllib.parse import parse_qs, urlsplit
 from unittest.mock import patch
 
 from django.db import connection
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -120,6 +120,73 @@ class BookingFilterTests(BookingFixtures, TestCase):
         self.assertNotIn(NOW.date().isoformat(), html.available("date"))
         _, html = self.get_filters(**self.complete)
         self.assertEqual(html.available("service"), {str(self.service.pk), str(self.long.pk)})
+
+    def test_html_fetch_keeps_same_sole_barber_calendar_and_language_contract(self):
+        for language in ("bg", "en"):
+            for values in ({"service": str(self.long.pk)}, self.complete):
+                with self.subTest(language=language, values=values):
+                    normal, normal_html = self.get_filters(**values, lang=language)
+                    fetched = self.client.get(
+                        reverse("booking:book"), {**values, "lang": language},
+                        HTTP_ACCEPT="text/html",
+                    )
+                    html = FilterHTML(fetched)
+                    self.assertEqual(fetched.status_code, 200)
+                    self.assertEqual(html.selects, normal_html.selects)
+                    self.assertEqual(html.available("barber"), {str(self.barber.pk)})
+                    self.assert_preserved(html, values)
+                    self.assertEqual(fetched.context["slots"], normal.context["slots"])
+                    self.assertContains(fetched, f'<html lang="{language}">')
+                    self.assertContains(fetched, 'id="booking-content"', count=1)
+                    self.assertContains(fetched, 'id="visit-selection"', count=1)
+                    self.assertContains(fetched, 'id="date-calendar"', count=1)
+                    self.assertIn("no-store", fetched["Cache-Control"])
+                    self.assertIsNone(fetched.context["form"])
+                    self.assertFalse(self.client.session.get("booking_requests"))
+                    dates = html.selects["date"]
+                    self.assertEqual(dates[self.complete["date"]]["data-available"], "true")
+                    self.assertEqual(dates[self.day_off.isoformat()]["data-available"], "false")
+
+    def test_fetched_time_issues_session_nonce_and_requires_csrf_for_confirmation(self):
+        client = Client(enforce_csrf_checks=True)
+        url = reverse("booking:book")
+        tokens = []
+        for chosen in ("10:00", "10:15"):
+            response = client.get(url, {**self.complete, "time": chosen, "lang": "en"}, HTTP_ACCEPT="text/html")
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, 'id="details"')
+            self.assertContains(response, 'name="csrfmiddlewaretoken"')
+            tokens.append(str(response.context["form"]["request_id"].value()))
+        self.assertNotEqual(*tokens)
+        self.assertEqual(client.session["booking_requests"], tokens)
+        payload = {
+            **self.complete, "time": "10:15", "request_id": tokens[-1],
+            "customer_name": "Synthetic Fetch Client", "phone": "0888123456", "email": "",
+        }
+        self.assertEqual(client.post(url, payload).status_code, 403)
+        self.assertEqual(Appointment.objects.count(), 1)
+        payload["csrfmiddlewaretoken"] = client.cookies["csrftoken"].value
+        self.assertEqual(client.post(url, payload).status_code, 302)
+        self.assertEqual(Appointment.objects.filter(request_id=tokens[-1]).count(), 1)
+        self.assertEqual(client.post(url, payload).status_code, 302)
+        self.assertEqual(Appointment.objects.count(), 2)
+
+    def test_refetched_stale_time_removes_details_and_does_not_expose_customer(self):
+        url = reverse("booking:book")
+        values = {**self.complete, "time": "10:00", "lang": "en"}
+        first = self.client.get(url, values, HTTP_ACCEPT="text/html")
+        self.assertContains(first, 'id="details"')
+        tokens = list(self.client.session["booking_requests"])
+        booked = self.reserve(service_id=self.long.pk, day=NOW.date() + timedelta(days=1))
+        refreshed = self.client.get(url, values, HTTP_ACCEPT="text/html")
+        self.assert_preserved(FilterHTML(refreshed), self.complete)
+        self.assertNotContains(refreshed, 'id="details"')
+        self.assertIsNone(refreshed.context["form"])
+        self.assertTrue(refreshed.context["selection"].non_field_errors())
+        self.assertNotIn(time(10), [slot.time() for slot in refreshed.context["slots"]])
+        self.assertEqual(self.client.session["booking_requests"], tokens)
+        for private_value in (booked.customer_name, booked.phone, booked.email, str(booked.reference)):
+            self.assertNotContains(refreshed, private_value)
 
     def test_dates_include_disabled_day_off_booked_and_closed_days(self):
         _, html = self.get_filters(barber=self.barber.pk, service=self.service.pk)

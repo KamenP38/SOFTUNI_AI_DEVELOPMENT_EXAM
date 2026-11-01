@@ -10,18 +10,14 @@ COPY = {
         "hero_sub": "Професионално бръснарство с класически занаят и модерен стил. Alan Barberhouse поддържа джентълмените изрядни от години.",
         "hero_book": "Запази час",
         "hero_services": "Нашите услуги",
-        "badge_text": "Отзиви",
         "services_title": "Нашите Услуги",
         "gal_title": "Галерия",
         "rev_label": "Какво казват клиентите",
-        "hrs_label": "Работно време",
-        "h1": "Понеделник – Неделя",
+        "contact_title": "Контакти",
         "c_phone": "Телефон",
         "c_addr": "Адрес",
         "c_map": "Намери ни",
         "c_map_link": "Отвори в Google Maps →",
-        "c_rating": "Оценка",
-        "c_reviews": "Отзиви в Google",
         "strip": [
             "Подстригване",
             "Оформяне на брада",
@@ -34,10 +30,6 @@ COPY = {
             "\"Най-добрата бръснарница! Напълно професионални и момчетата се грижат страхотно за мен!\"",
             "\"Страхотно гостоприемство, всичко е перфектно. Идвам от години и винаги съм доволен.\"",
             "\"Прекрасно място с невероятни служители, обръщат лично внимание на прическата ти.\"",
-        ],
-        "hours_lines": [
-            "Всеки ден",
-            "от Седмицата",
         ],
         "address_lines": [
             "бул. Гоце Делчев 9",
@@ -62,9 +54,6 @@ COPY = {
         "footnote": "Продължителността е ориентировъчна и зависи от косата и избрания стил.",
         "review_author": "Отзив в Google",
         "five_stars": "5 от 5 звезди",
-        "rating_label": "4.7 от 5 — Отзиви в Google",
-        "call_to_book": "Обадете се за запазване на час",
-        "call_note": "Моля, обадете ни се, за да уговорим вашия час.",
         "footer_address": "бул. Гоце Делчев 9, София",
         "gallery": [
             {
@@ -102,18 +91,14 @@ COPY = {
         "hero_sub": "Professional barbering with old-school craft and modern style. Alan Barberhouse has been keeping gentlemen sharp for years.",
         "hero_book": "Book an Appointment",
         "hero_services": "Our Services",
-        "badge_text": "Reviews",
         "services_title": "Our Services",
         "gal_title": "Gallery",
         "rev_label": "What Clients Say",
-        "hrs_label": "We're Open",
-        "h1": "Monday – Sunday",
+        "contact_title": "Contacts",
         "c_phone": "Phone",
         "c_addr": "Address",
         "c_map": "Find Us",
         "c_map_link": "Open in Google Maps →",
-        "c_rating": "Rating",
-        "c_reviews": "Reviews on Google",
         "strip": [
             "Haircut",
             "Beard Trim",
@@ -126,10 +111,6 @@ COPY = {
             "\"Best Barber House! Fully professional and the guys take really good care of me! Always keeps me fresh!\"",
             "\"Great hospitality, everything is perfect. I've been coming for years and always happy. Highly recommended.\"",
             "\"Wonderful place with amazing staff who give personal attention to your hairstyle. Highly recommend!\"",
-        ],
-        "hours_lines": [
-            "Every Day",
-            "of the Week",
         ],
         "address_lines": [
             "9 Gotse Delchev Blvd",
@@ -154,9 +135,6 @@ COPY = {
         "footnote": "Durations are an average and may vary with your hair and chosen style.",
         "review_author": "Google Review",
         "five_stars": "5 out of 5 stars",
-        "rating_label": "4.7 out of 5 — Google reviews",
-        "call_to_book": "Call to book an appointment",
-        "call_note": "Please call us to arrange your appointment.",
         "footer_address": "9 Gotse Delchev Blvd, Sofia",
         "gallery": [
             {

@@ -126,16 +126,35 @@ class HomepageTests(TestCase):
                         self.assertIn(href[1:], parser.ids)
                 for link in bookings:
                     self.assertEqual(urlsplit(link["href"]).path, reverse("booking:book"))
+                contact_links = [
+                    link for link in parser.links
+                    if "contact-cta" in link.get("class", "").split()
+                ]
+                self.assertEqual(len(contact_links), 1)
+                self.assertEqual(contact_links[0]["href"], reverse("booking:book"))
+                self.assertEqual(
+                    contact_links[0]["text"].strip(),
+                    "Запази час" if language == "bg" else "Book an Appointment",
+                )
 
-    def test_contact_hours_rating_and_gallery_are_server_rendered_in_both_languages(self):
-        for language, day_label, address, review in (
-            ("bg", "Понеделник – Неделя", "бул. Гоце Делчев 9", "Най-добрата бръснарница!"),
-            ("en", "Monday – Sunday", "9 Gotse Delchev Blvd", "Best Barber House!"),
+    def test_contact_and_gallery_are_server_rendered_in_both_languages(self):
+        for language, contact_title, address, review in (
+            ("bg", "Контакти", "бул. Гоце Делчев 9", "Най-добрата бръснарница!"),
+            ("en", "Contacts", "9 Gotse Delchev Blvd", "Best Barber House!"),
         ):
             with self.subTest(language=language):
                 response = self.client.get(reverse("catalogue:home"), {"lang": language})
-                for text in ("Alan Barberhouse", day_label, address, review, "10:00 – 20:00", "4.7", "+359 88 977 1917"):
+                for text in ("Alan Barberhouse", contact_title, address, review, "+359 88 977 1917"):
                     self.assertContains(response, text)
+                for removed in ("hero-badge", "info-left", "hours-heading", "10:00 – 20:00", "4.7", "Оценка", "Rating"):
+                    self.assertNotContains(response, removed)
+                self.assertContains(response, "★★★★★", count=4)
+                self.assertContains(response, 'id="contact" aria-labelledby="contact-heading"')
+                self.assertContains(
+                    response,
+                    f'<h2 class="section-title" id="contact-heading">{contact_title}</h2>',
+                    html=True,
+                )
                 parser = AssetParser()
                 parser.feed(response.content.decode())
                 phones = [link for link in parser.links if link.get("href", "").startswith("tel:")]

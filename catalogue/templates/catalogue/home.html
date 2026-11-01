@@ -45,11 +45,6 @@
             </div>
             <div class="hero-right">
                 <img class="hero-image" src="{% static 'images/interior-dark.jpg' %}" alt="{{ copy.hero_alt }}" width="400" height="533" fetchpriority="high">
-                <div class="hero-badge" aria-label="{{ copy.rating_label }}">
-                    <span class="badge-stars" aria-hidden="true">★★★★★</span>
-                    <span class="badge-num">4.7</span>
-                    <span class="badge-text">{{ copy.badge_text }}</span>
-                </div>
             </div>
         </section>
         <div class="gold-strip">
@@ -92,13 +87,9 @@
                 {% endfor %}
             </div>
         </section>
-        <section class="info-section" id="contact" aria-labelledby="hours-heading">
-            <div class="info-left">
-                <p class="section-label">{{ copy.hrs_label }}</p>
-                <h2 class="section-title" id="hours-heading">{% for line in copy.hours_lines %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</h2>
-                <ul class="hours-list"><li><span>{{ copy.h1 }}</span><span>10:00 – 20:00</span></li></ul>
-            </div>
-            <div class="info-right">
+        <section class="section info-section" id="contact" aria-labelledby="contact-heading">
+            <h2 class="section-title" id="contact-heading">{{ copy.contact_title }}</h2>
+            <div class="contact-grid">
                 <div class="contact-item">
                     <h3 class="contact-label">{{ copy.c_phone }}</h3>
                     <p class="contact-value"><a href="tel:+359889771917">+359 88 977 1917</a></p>
@@ -111,13 +102,8 @@
                     <h3 class="contact-label">{{ copy.c_map }}</h3>
                     <p class="contact-value"><a href="https://www.google.com/maps/search/?api=1&amp;query=Alan+Barberhouse+9+Gotse+Delchev+Sofia">{{ copy.c_map_link }}</a></p>
                 </div>
-                <div class="contact-item">
-                    <h3 class="contact-label">{{ copy.c_rating }}</h3>
-                    <p class="contact-value"><span aria-hidden="true">★★★★★</span> 4.7 / 5 — {{ copy.c_reviews }}</p>
-                </div>
-                <p class="call-note">{{ copy.call_note }}</p>
-                <a class="btn-primary contact-cta" href="tel:+359889771917">{{ copy.call_to_book }}</a>
             </div>
+            <a class="btn-primary contact-cta" href="{% url 'booking:book' %}">{{ copy.hero_book }}</a>
         </section>
     </main>
     <footer>

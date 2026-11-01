@@ -1,6 +1,6 @@
 // Dates are presentation-only: availability and Sofia's booking window come
 // from the server's select options, including explicitly unavailable stale values.
-function enhanceDateCalendar(select) {
+function enhanceDateCalendar(select, savedState = null) {
     const calendar = document.getElementById("date-calendar");
     if (!calendar || !select.dataset.minDate || !select.dataset.maxDate) return;
 
@@ -26,6 +26,14 @@ function enhanceDateCalendar(select) {
     const selectedDate = parseDate(select.value);
     let focusedDate = inWindow(selectedDate) ? selectedDate : min;
     let month = monthStart(focusedDate);
+    if (savedState) {
+        const savedMonth = parseDate(savedState.month);
+        const savedFocus = parseDate(savedState.focusedDate);
+        if (savedMonth >= monthStart(min) && savedMonth <= monthStart(max)) {
+            month = savedMonth;
+            focusedDate = inWindow(savedFocus) ? savedFocus : (month < min ? min : month);
+        }
+    }
 
     // Explicit UTC dates avoid shifting calendar days in the visitor's timezone.
     for (let index = 0; index < 7; index += 1) {
@@ -39,6 +47,8 @@ function enhanceDateCalendar(select) {
     calendar.querySelector("[data-calendar-selection]").textContent = options.get(select.value)?.textContent || "";
 
     function renderMonth(moveFocus = false) {
+        calendar.dataset.month = isoDate(month);
+        calendar.dataset.focusedDate = isoDate(focusedDate);
         calendar.querySelector("#calendar-month").textContent = monthLabel.format(month);
         previous.disabled = month <= monthStart(min);
         next.disabled = month >= monthStart(max);
@@ -94,6 +104,12 @@ function enhanceDateCalendar(select) {
             if (button.disabled) body.querySelector('[tabindex="0"]').focus();
         } else if (button.dataset.date && button.getAttribute("aria-disabled") !== "true") {
             select.value = button.dataset.date;
+            calendar.querySelector("[data-calendar-selection]").textContent = options.get(select.value)?.textContent || "";
+            body.querySelectorAll("[data-date]").forEach((day) => {
+                const selected = day.dataset.date === select.value;
+                day.classList.toggle("is-selected", selected);
+                day.parentElement.setAttribute("aria-selected", String(selected));
+            });
             select.dispatchEvent(new Event("change", {bubbles: true}));
         }
     });
@@ -101,6 +117,7 @@ function enhanceDateCalendar(select) {
         const button = event.target.closest("[data-date]");
         if (!button) return;
         focusedDate = parseDate(button.dataset.date);
+        calendar.dataset.focusedDate = button.dataset.date;
         body.querySelectorAll("button").forEach((day) => { day.tabIndex = day === button ? 0 : -1; });
     });
     body.addEventListener("keydown", (event) => {
@@ -128,23 +145,173 @@ function enhanceDateCalendar(select) {
         label.id = "calendar-label";
         calendar.setAttribute("aria-labelledby", label.id);
     }
-    if (["#date-calendar", `#${select.id}`].includes(window.location.hash)) {
+    if (!savedState && ["#date-calendar", `#${select.id}`].includes(window.location.hash)) {
         body.querySelector('[tabindex="0"]').focus();
     }
 }
 
-// The GET form contains no time: changing a filter always clears the old slot.
-const visitSelection = document.getElementById("visit-selection");
-if (visitSelection) {
-    document.querySelector(".auto-refresh-note").hidden = false;
-    visitSelection.querySelectorAll("[data-filter]").forEach((field) => {
-        field.addEventListener("change", () => {
-            // Carry the focus target through this navigation without storing data.
-            const target = field.hidden && field.dataset.filter === "date" ? "date-calendar" : field.id;
-            visitSelection.action = `${window.location.pathname}#${target}`;
-            visitSelection.requestSubmit();
+function enhanceBooking() {
+    let content = document.getElementById("booking-content");
+    const refresh = document.getElementById("booking-refresh");
+    if (!content || !refresh || !window.fetch) return;
+    const status = refresh.querySelector('[role="status"]');
+    const retry = refresh.querySelector("[data-booking-retry]");
+    const draft = {};
+    let pending = null;
+    let running = false;
+    let revision = 0;
+    let failed = null;
+
+    function initializeCalendar(state = null) {
+        content.querySelector(".auto-refresh-note").hidden = false;
+        const select = content.querySelector('[data-filter="date"]');
+        if (select) enhanceDateCalendar(select, state);
+    }
+
+    function selectionURL() {
+        const form = content.querySelector("#visit-selection");
+        const url = new URL(form.action, window.location.href);
+        url.search = new URLSearchParams(new FormData(form)).toString();
+        url.hash = "visit-selection";
+        return url;
+    }
+
+    function saveDraft() {
+        for (const name of ["customer_name", "phone", "email"]) {
+            const input = content.querySelector(`#details [name="${name}"]`);
+            if (input) draft[name] = input.value;
+        }
+    }
+
+    function clearTimes() {
+        saveDraft();
+        // Remove the old POST form immediately, even if the refresh later fails.
+        content.querySelector("#details")?.remove();
+        content.querySelector("[data-booking-times]")?.replaceChildren();
+    }
+
+    function focusSelector(element) {
+        if (!element || !content.contains(element)) return null;
+        if (element.dataset.date) return `[data-date="${element.dataset.date}"]`;
+        if (element.dataset.monthStep) return `[data-month-step="${element.dataset.monthStep}"]`;
+        if (element.dataset.clearFilter) return `[data-filter="${element.dataset.clearFilter}"]`;
+        if (element.id) return `#${CSS.escape(element.id)}`;
+        return "#visit-selection";
+    }
+
+    function updateLanguageLinks(url) {
+        document.querySelectorAll(".lang-toggle a[lang]").forEach((link) => {
+            const target = new URL(url);
+            target.searchParams.set("lang", link.lang);
+            link.href = target.href;
         });
+    }
+
+    function request(url, {history = true, resetCalendar = false, focus = null} = {}) {
+        pending = {url, history, resetCalendar, focus, revision: ++revision};
+        failed = null;
+        content.style.minHeight = `${content.getBoundingClientRect().height}px`;
+        clearTimes();
+        refresh.hidden = false;
+        retry.hidden = true;
+        status.textContent = refresh.dataset.loading;
+        content.setAttribute("aria-busy", "true");
+        void runRequests();
+    }
+
+    async function runRequests() {
+        if (running) return;
+        running = true;
+        // GETs also save the session (language and issued booking nonces). Wait
+        // for each response before the next GET, coalescing rapid filter changes.
+        // Aborting a fetch would not cancel its server-side session write.
+        while (pending) {
+            const job = pending;
+            pending = null;
+            try {
+                const response = await fetch(job.url, {
+                    credentials: "same-origin", cache: "no-store",
+                    headers: {Accept: "text/html"},
+                });
+                if (!response.ok || response.redirected) throw new Error("Availability response failed");
+                const documentResult = new DOMParser().parseFromString(await response.text(), "text/html");
+                const replacement = documentResult.getElementById("booking-content");
+                if (!replacement?.querySelector("#visit-selection")) throw new Error("Missing booking content");
+                if (job.revision !== revision) continue;
+
+                const active = document.activeElement;
+                const target = focusSelector(active) || (active === document.body || active === retry ? job.focus : null);
+                const calendar = content.querySelector("#date-calendar");
+                const calendarState = !job.resetCalendar && calendar ? {...calendar.dataset} : null;
+                const scroll = {left: window.scrollX, top: window.scrollY, behavior: "instant"};
+                content.replaceWith(replacement);
+                content = replacement;
+                initializeCalendar(calendarState);
+                for (const [name, value] of Object.entries(draft)) {
+                    const input = content.querySelector(`#details [name="${name}"]`);
+                    if (input) input.value = value;
+                }
+                if (job.history && job.url.href !== window.location.href) {
+                    window.history.pushState(null, "", job.url);
+                }
+                updateLanguageLinks(job.url);
+                if (target) {
+                    let element = content.querySelector(target);
+                    if (element?.hidden || element?.disabled) element = null;
+                    (element || content.querySelector("#visit-selection")).focus({preventScroll: true});
+                }
+                window.scrollTo(scroll);
+                if (target === "#details") {
+                    content.querySelector("#details")?.scrollIntoView({block: "nearest", behavior: "instant"});
+                }
+                status.textContent = refresh.dataset.ready;
+                content.removeAttribute("aria-busy");
+            } catch (error) {
+                if (job.revision !== revision) continue;
+                clearTimes();
+                failed = job;
+                status.textContent = refresh.dataset.error;
+                retry.hidden = false;
+                content.removeAttribute("aria-busy");
+            }
+        }
+        running = false;
+    }
+
+    // Delegate to the stable document because each successful GET replaces the
+    // form. Ordinary links/forms remain fully usable when enhancement is absent.
+    document.addEventListener("change", (event) => {
+        if (!event.target.matches("#visit-selection [data-filter]")) return;
+        request(selectionURL(), {focus: focusSelector(document.activeElement)});
     });
-    const dateSelect = visitSelection.querySelector('[data-filter="date"]');
-    if (dateSelect) enhanceDateCalendar(dateSelect);
+    document.addEventListener("submit", (event) => {
+        if (event.target.id !== "visit-selection") return;
+        event.preventDefault();
+        request(selectionURL(), {focus: "#visit-selection"});
+    });
+    document.addEventListener("click", (event) => {
+        const link = event.target.closest("a[data-clear-filter], a[data-reset-filters], a[data-booking-time]");
+        if (!link || !content.contains(link) || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        const clear = link.dataset.clearFilter;
+        const reset = link.hasAttribute("data-reset-filters");
+        if (clear || reset) {
+            content.querySelectorAll("#visit-selection [data-filter]").forEach((field) => {
+                if (reset || field.dataset.filter === clear) field.value = "";
+            });
+            request(selectionURL(), {resetCalendar: reset || clear === "date", focus: "#visit-selection"});
+        } else {
+            request(new URL(link.href), {focus: "#details"});
+        }
+    });
+    retry.addEventListener("click", () => {
+        if (failed) request(failed.url, {...failed, focus: "#visit-selection"});
+    });
+    window.addEventListener("popstate", () => {
+        request(new URL(window.location.href), {history: false, resetCalendar: true, focus: "#visit-selection"});
+    });
+    refresh.hidden = false;
+    initializeCalendar();
 }
+
+enhanceBooking();

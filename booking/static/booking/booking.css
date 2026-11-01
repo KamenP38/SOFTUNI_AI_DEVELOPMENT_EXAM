@@ -51,6 +51,9 @@
 .filter-actions { margin-bottom: 1.25rem; justify-content: flex-start; gap: 1.25rem; }
 .booking-site select { max-width: 100%; }
 .booking-site option:disabled { color: #aaa; }
+.booking-refresh { min-height: 2.5rem; margin-bottom: .5rem; }
+.booking-refresh p { margin: 0; color: #c7c1b5; }
+.booking-refresh [data-booking-retry] { margin-top: .4rem; }
 .date-calendar { width: 100%; max-width: 360px; padding: .8rem; border: 1px solid #656055; border-radius: 3px; background: #181818; }
 .date-calendar[hidden] { display: none; }
 .calendar-header { display: flex; align-items: center; justify-content: space-between; gap: .4rem; margin-bottom: .6rem; }

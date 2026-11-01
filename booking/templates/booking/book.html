@@ -13,6 +13,14 @@
     <p class="intro">
         {% t 'Choose a service, barber and date in any order. No account needed.' 'Изберете услуга, бръснар и дата в произволен ред. Не е необходим профил.' %}
     </p>
+    <div id="booking-refresh" class="booking-refresh" hidden
+         data-loading="{% t 'Updating available options…' 'Обновяване на свободните възможности…' %}"
+         data-ready="{% t 'Available options updated.' 'Свободните възможности са обновени.' %}"
+         data-error="{% t 'Could not update availability. Please retry. Previous times have been cleared.' 'Не успяхме да обновим свободните часове. Опитайте отново. Предишните часове са изчистени.' %}">
+        <p role="status" aria-live="polite" aria-atomic="true"></p>
+        <button type="button" class="text-button" data-booking-retry hidden>{% t 'Try again' 'Опитайте отново' %}</button>
+    </div>
+    <div id="booking-content">
     <div class="booking-grid">
         <section class="panel">
             <h2>
@@ -35,7 +43,7 @@
                         <div class="filter-label">
                             {{ item.field.label_tag }}
                             {% if item.has_value %}
-                                <a href="{{ item.clear_url }}" aria-label="{% t 'Clear' 'Изчисти' %} {{ item.field.label }}">{% t 'Clear' 'Изчисти' %}</a>
+                                <a href="{{ item.clear_url }}" data-clear-filter="{{ item.field.name }}" aria-label="{% t 'Clear' 'Изчисти' %} {{ item.field.label }}">{% t 'Clear' 'Изчисти' %}</a>
                             {% endif %}
                         </div>
                         {{ item.field.errors }}
@@ -49,7 +57,7 @@
                     <button class="btn-primary" formnovalidate>
                         {% t 'Apply filters' 'Приложи филтрите' %}
                     </button>
-                    <a href="{% url 'booking:book' %}?lang={{ language }}#visit-selection">{% t 'Reset filters' 'Нулирай филтрите' %}</a>
+                    <a href="{% url 'booking:book' %}?lang={{ language }}#visit-selection" data-reset-filters>{% t 'Reset filters' 'Нулирай филтрите' %}</a>
                 </div>
             </form>
             <p class="muted" id="filter-help">
@@ -62,13 +70,14 @@
                 02 ·
                 {% t 'Choose your time' 'Изберете час' %}
             </h2>
+            <div data-booking-times>
             {% if selected %}
                 <p class="muted">
                     {{ selected.barber.name }} · {{ selected.date|date:'d.m.Y' }}
                 </p>
                 <div class="slots">
                     {% for slot in slots %}
-                        <a class="slot" href="?lang={{ language }}&amp;service={{ selected.service.pk }}&amp;barber={{ selected.barber.pk }}&amp;date={{ selected.date|date:'Y-m-d' }}&amp;time={{ slot|date:'H:i' }}#details">
+                        <a class="slot" data-booking-time href="?lang={{ language }}&amp;service={{ selected.service.pk }}&amp;barber={{ selected.barber.pk }}&amp;date={{ selected.date|date:'Y-m-d' }}&amp;time={{ slot|date:'H:i' }}#details">
                             {{ slot|date:'H:i' }}
                         </a>
                     {% empty %}
@@ -82,6 +91,7 @@
                     {% t 'Choose a service, barber and date to see available times.' 'Изберете услуга, бръснар и дата, за да видите свободните часове.' %}
                 </p>
             {% endif %}
+            </div>
         </section>
     </div>
     {% if form and selected %}
@@ -116,6 +126,7 @@
             </form>
         </section>
     {% endif %}
+    </div>
     <script src="{% static 'booking/booking.js' %}" defer>
     </script>
 {% endblock %}
