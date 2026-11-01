@@ -1,0 +1,93 @@
+{% load static %}
+<!doctype html>
+<html lang="{{ language }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{{ copy.meta }} {{ shop_name }}.">
+    <meta name="theme-color" content="#f5f2eb">
+    <title>{{ shop_name }} — {{ copy.title }}</title>
+    <link rel="stylesheet" href="{% static 'catalogue/site.css' %}">
+</head>
+<body>
+    <a class="skip-link" href="#main">{{ copy.skip }}</a>
+    <header class="site-header wrap">
+        <a class="wordmark" href="{% url 'catalogue:home' %}" aria-label="{{ shop_name }} {{ copy.home }}">
+            <span class="brand-mark" aria-hidden="true">A<span>⁄</span></span>
+            <span>{{ shop_name }}<small>{{ copy.tagline }}</small></span>
+        </a>
+        <div class="header-links">
+            <nav aria-label="{{ copy.navigation }}">
+                <a href="#services">{{ copy.services }}</a>
+                <a href="#the-space">{{ copy.space }}</a>
+            </nav>
+            <div class="language-switch" role="group" aria-label="{{ copy.language_label }}">
+                <a href="?lang=bg" lang="bg" aria-label="Български" {% if language == 'bg' %}aria-current="true"{% endif %}>BG</a>
+                <span aria-hidden="true">|</span>
+                <a href="?lang=en" lang="en" aria-label="English" {% if language == 'en' %}aria-current="true"{% endif %}>EN</a>
+            </div>
+        </div>
+    </header>
+
+    <main id="main">
+        <section class="hero wrap" aria-labelledby="hero-heading">
+            <div class="hero-copy">
+                <p class="eyebrow"><span aria-hidden="true"></span> {{ copy.eyebrow }}</p>
+                <h1 id="hero-heading">{{ copy.hero_one }}<br>{{ copy.hero_two }}<br><em>{{ copy.hero_three }}</em></h1>
+                <p class="hero-intro">{{ copy.intro }}</p>
+                <a class="button" href="#services">{{ copy.cta }} <span aria-hidden="true">↗</span></a>
+                <div class="hero-detail"><span class="detail-rule" aria-hidden="true"></span><p>{{ copy.detail_one }}<br>{{ copy.detail_two }}</p></div>
+            </div>
+            <figure class="hero-photo">
+                <img src="{% static 'images/interior-bright.jpg' %}" alt="{{ copy.hero_alt }}" width="400" height="533" fetchpriority="high">
+                <figcaption><span>{{ copy.caption }}</span><span aria-hidden="true">{{ copy.photo_index }}</span></figcaption>
+            </figure>
+        </section>
+
+        <section class="services wrap" id="services" aria-labelledby="services-heading">
+            <div class="section-heading">
+                <div><p class="eyebrow">{{ copy.menu_eyebrow }}</p><h2 id="services-heading">{{ copy.menu_title }}</h2></div>
+                <p>{{ copy.menu_intro_one }}<br>{{ copy.menu_intro_two }}</p>
+            </div>
+            {% if show_demo_notice %}
+            <p class="demo-notice"><span>{{ copy.sample }}</span> {{ copy.sample_note }}</p>
+            {% endif %}
+            <ol class="service-menu">
+                {% for service in services %}
+                <li class="service-row">
+                    <span class="service-number" aria-hidden="true">{{ forloop.counter|stringformat:"02d" }}</span>
+                    <div class="service-copy">
+                        <h3>{{ service.name }}</h3>
+                        <p>{{ service.description }}</p>
+                        <span class="duration">{{ service.duration_minutes }} {{ copy.minutes }} <span>{{ copy.average }}</span></span>
+                    </div>
+                    <span class="price"><span class="currency">EUR</span> {{ service.price|floatformat:2 }}</span>
+                </li>
+                {% empty %}
+                <li class="empty-menu">{{ copy.empty }}</li>
+                {% endfor %}
+            </ol>
+            <p class="menu-footnote">{{ copy.footnote }}</p>
+        </section>
+
+        <section class="space-section" id="the-space" aria-labelledby="space-heading">
+            <div class="wrap">
+                <div class="section-heading">
+                    <div><p class="eyebrow">{{ copy.space_eyebrow }}</p><h2 id="space-heading">{{ copy.space_title }}</h2></div>
+                    <p>{{ copy.space_intro_one }}<br>{{ copy.space_intro_two }} {{ shop_name }}.</p>
+                </div>
+                <div class="space-gallery">
+                    <figure class="gallery-interior"><img src="{% static 'images/interior-dark.jpg' %}" alt="{{ copy.interior_alt }}" width="400" height="533" loading="lazy"><figcaption>{{ copy.space }}</figcaption></figure>
+                    <figure class="gallery-chair"><img src="{% static 'images/chairs.jpg' %}" alt="{{ copy.chair_alt }}" width="400" height="533" loading="lazy"><figcaption>{{ copy.chair_caption }}</figcaption></figure>
+                    <figure class="gallery-lounge"><img src="{% static 'images/lounge.jpg' %}" alt="{{ copy.lounge_alt }}" width="400" height="533" loading="lazy"><figcaption>{{ copy.lounge_caption }}</figcaption></figure>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer wrap">
+        <div><p class="footer-name">{{ shop_name }}</p><p>{{ copy.footer_tagline }}</p></div>
+        <a href="#services">{{ copy.footer_link }} <span aria-hidden="true">↑</span></a>
+    </footer>
+</body>
+</html>
