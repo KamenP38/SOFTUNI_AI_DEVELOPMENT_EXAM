@@ -12,6 +12,8 @@
 .team-grid { grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr)); }
 .panel { padding: 1.8rem; background: var(--dark); border: 1px solid #343025; border-radius: 3px; min-width: 0; }
 .details-panel { max-width: 720px; margin: 2rem 0; }
+.booking-step-heading { scroll-margin-top: 2rem; }
+.booking-step-heading:focus { outline: 2px solid var(--gold-light); outline-offset: .35rem; }
 .stack p, .panel > p { margin-bottom: 1.25rem; }
 .stack label, .filters label, .hours-row label:not(.checkbox) { display: block; margin-bottom: .4rem; }
 .booking-site input:not([type='checkbox']):not([type='hidden']), .booking-site select, .booking-site textarea { background: #1b1b1b; color: var(--cream); border: 1px solid #656055; border-radius: 2px; padding: .75rem; font: inherit; width: 100%; min-height: 46px; color-scheme: dark; }

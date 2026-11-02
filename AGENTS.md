@@ -12,6 +12,7 @@
 - Start delegated agents with fresh context containing only this repository's instructions and the relevant task requirements, rather than inheriting the full conversation history.
 - For documentation or setup-only tasks, use only the work needed to validate the change.
 - Both agents must read `.agents/skills/django-patterns/SKILL.md` before Django work. Apply relevant guidance to the actual stack; its examples do not mandate DRF, Redis, Celery or a new project layout.
+- For UI test authoring, `test-agent` must follow the repository-local `.agents/skills/cypress-author/SKILL.md`. Use Cypress against synthetic test data, document the action/role/language/viewport coverage, and check both visible outcomes and expected database changes or non-changes. Report suspicious behavior and untested combinations explicitly.
 - If named custom agents are unavailable in the current client, pass the corresponding TOML `developer_instructions` to a regular sub-agent explicitly; do not silently drop the role instructions.
 
 ## Product requirements

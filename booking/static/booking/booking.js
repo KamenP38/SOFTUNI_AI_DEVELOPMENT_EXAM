@@ -161,6 +161,7 @@ function enhanceBooking() {
     let running = false;
     let revision = 0;
     let failed = null;
+    let focusVersion = 0;
 
     function initializeCalendar(state = null) {
         content.querySelector(".auto-refresh-note").hidden = false;
@@ -207,8 +208,8 @@ function enhanceBooking() {
         });
     }
 
-    function request(url, {history = true, resetCalendar = false, focus = null} = {}) {
-        pending = {url, history, resetCalendar, focus, revision: ++revision};
+    function request(url, {history = true, resetCalendar = false, focus = null, nextStep = null} = {}) {
+        pending = {url, history, resetCalendar, focus, nextStep, revision: ++revision};
         failed = null;
         content.style.minHeight = `${content.getBoundingClientRect().height}px`;
         clearTimes();
@@ -216,6 +217,7 @@ function enhanceBooking() {
         retry.hidden = true;
         status.textContent = refresh.dataset.loading;
         content.setAttribute("aria-busy", "true");
+        pending.focusVersion = focusVersion;
         void runRequests();
     }
 
@@ -241,6 +243,9 @@ function enhanceBooking() {
 
                 const active = document.activeElement;
                 const target = focusSelector(active) || (active === document.body || active === retry ? job.focus : null);
+                // Changing a filter can complete the visit while focus remains on
+                // that control. Advance only if the user has not focused elsewhere.
+                const advance = job.focusVersion === focusVersion ? job.nextStep : null;
                 const calendar = content.querySelector("#date-calendar");
                 const calendarState = !job.resetCalendar && calendar ? {...calendar.dataset} : null;
                 const scroll = {left: window.scrollX, top: window.scrollY, behavior: "instant"};
@@ -255,14 +260,19 @@ function enhanceBooking() {
                     window.history.pushState(null, "", job.url);
                 }
                 updateLanguageLinks(job.url);
-                if (target) {
+                const nextHeading = advance === "details" ? content.querySelector("#details-heading") :
+                    advance === "times" && content.querySelector("[data-booking-time]") ?
+                        content.querySelector("#time-selection-heading") : null;
+                if (target && !nextHeading) {
                     let element = content.querySelector(target);
                     if (element?.hidden || element?.disabled) element = null;
                     (element || content.querySelector("#visit-selection")).focus({preventScroll: true});
                 }
                 window.scrollTo(scroll);
-                if (target === "#details") {
-                    content.querySelector("#details")?.scrollIntoView({block: "nearest", behavior: "instant"});
+                if (nextHeading) {
+                    nextHeading.focus({preventScroll: true});
+                    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                    nextHeading.scrollIntoView({block: "start", behavior: reducedMotion ? "instant" : "smooth"});
                 }
                 status.textContent = refresh.dataset.ready;
                 content.removeAttribute("aria-busy");
@@ -280,14 +290,15 @@ function enhanceBooking() {
 
     // Delegate to the stable document because each successful GET replaces the
     // form. Ordinary links/forms remain fully usable when enhancement is absent.
+    document.addEventListener("focusin", () => { focusVersion += 1; });
     document.addEventListener("change", (event) => {
         if (!event.target.matches("#visit-selection [data-filter]")) return;
-        request(selectionURL(), {focus: focusSelector(document.activeElement)});
+        request(selectionURL(), {focus: focusSelector(document.activeElement), nextStep: "times"});
     });
     document.addEventListener("submit", (event) => {
         if (event.target.id !== "visit-selection") return;
         event.preventDefault();
-        request(selectionURL(), {focus: "#visit-selection"});
+        request(selectionURL(), {focus: "#visit-selection", nextStep: "times"});
     });
     document.addEventListener("click", (event) => {
         const link = event.target.closest("a[data-clear-filter], a[data-reset-filters], a[data-booking-time]");
@@ -301,7 +312,7 @@ function enhanceBooking() {
             });
             request(selectionURL(), {resetCalendar: reset || clear === "date", focus: "#visit-selection"});
         } else {
-            request(new URL(link.href), {focus: "#details"});
+            request(new URL(link.href), {focus: "#visit-selection", nextStep: "details"});
         }
     });
     retry.addEventListener("click", () => {

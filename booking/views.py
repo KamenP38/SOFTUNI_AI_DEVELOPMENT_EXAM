@@ -18,10 +18,10 @@ from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.debug import sensitive_post_parameters
 
 from catalogue.models import Service
-from .forms import BarberForm, BookingForm, DayOffForm, HoursForm, MyServicesForm, SelectionForm, ServiceForm
+from .forms import BarberForm, BookingForm, DayOffForm, DayOffRangeForm, HoursForm, MyServicesForm, SelectionForm, ServiceForm
 from .models import Appointment, Barber
 from .permissions import active_barber, is_owner, require_edit, require_owner, staff_required
-from .rules import SOFIA, AvailabilitySnapshot, cancel_appointment, change_day_off, replace_hours, reserve
+from .rules import SOFIA, AvailabilitySnapshot, add_days_off, cancel_appointment, change_day_off, replace_hours, reserve
 
 
 def language_for(request):
@@ -298,7 +298,7 @@ def hours_edit(request, pk):
     require_edit(request, barber)
     language = language_for(request)
     hours = HoursForm(request.POST if request.POST.get("action") == "hours" else None, barber=barber, language=language)
-    off_form = DayOffForm(request.POST if request.POST.get("action") in ("add_off", "remove_off") else None, language=language)
+    off_form = DayOffRangeForm(request.POST if request.POST.get("action") in ("add_off", "remove_off") else None, language=language)
     if request.method == "POST":
         action = request.POST.get("action")
         form = hours if action == "hours" else off_form
@@ -308,8 +308,10 @@ def hours_edit(request, pk):
             try:
                 if action == "hours":
                     replace_hours(barber.pk, form.cleaned_data["shifts"])
+                elif action == "add_off":
+                    add_days_off(barber.pk, form.cleaned_data["date"], form.cleaned_data["end_date"])
                 else:
-                    change_day_off(barber.pk, form.cleaned_data["date"], remove=action == "remove_off")
+                    change_day_off(barber.pk, form.cleaned_data["date"], remove=True)
             except ValidationError as error:
                 form.add_error(None, error)
             else:

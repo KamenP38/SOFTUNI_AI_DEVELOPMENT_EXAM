@@ -13,7 +13,7 @@
     </h1>
     <div class="actions">
         <a class="btn-primary" href="{% url 'booking:schedule' %}">
-            {% t 'Open schedule' 'Отвори графика' %}
+            {% t 'Barbers schedules' 'График на бръснарите' %}
         </a>
         {% if staff_barber %}
             <a class="btn-outline" href="{% url 'booking:my_services' %}">
@@ -64,21 +64,18 @@
                         {% t 'No services assigned' 'Няма добавени услуги' %}
                     {% endfor %}
                 </p>
-                <div class="card-links">
-                    <a href="{% url 'booking:schedule' %}?barber={{ barber.pk }}">
-                        {% t 'View schedule' 'Виж графика' %}
-                    </a>
-                    {% if owner or staff_barber.pk == barber.pk %}
+                {% if owner or staff_barber.pk == barber.pk %}
+                    <div class="card-links">
                         <a href="{% url 'booking:hours' barber.pk %}">
                             {% t 'Hours & days off' 'Работно време и почивки' %}
                         </a>
-                    {% endif %}
-                    {% if owner %}
-                        <a href="{% url 'booking:barber_edit' barber.pk %}">
-                            {% t 'Edit profile' 'Редактирай профила' %}
-                        </a>
-                    {% endif %}
-                </div>
+                        {% if owner %}
+                            <a href="{% url 'booking:barber_edit' barber.pk %}">
+                                {% t 'Edit profile' 'Редактирай профила' %}
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </article>
         {% empty %}
             <p class="panel">

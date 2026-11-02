@@ -20,12 +20,15 @@ class FilterHTML(HTMLParser):
     def __init__(self, response):
         super().__init__()
         self.selects, self.links, self.get_fields = {}, [], []
+        self.elements = {}
         self.select = self.option = None
         self.in_get = False
         self.feed(response.content.decode())
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
+        if attrs.get("id"):
+            self.elements[attrs["id"]] = attrs
         if tag == "form":
             self.in_get = attrs.get("method", "get") == "get"
         if self.in_get and tag in ("input", "select") and attrs.get("name"):
@@ -146,6 +149,20 @@ class BookingFilterTests(BookingFixtures, TestCase):
                     dates = html.selects["date"]
                     self.assertEqual(dates[self.complete["date"]]["data-available"], "true")
                     self.assertEqual(dates[self.day_off.isoformat()]["data-available"], "false")
+
+    def test_booking_steps_have_labelled_focus_targets_in_both_languages(self):
+        for language in ("bg", "en"):
+            with self.subTest(language=language):
+                response, html = self.get_filters(**self.complete, lang=language)
+                self.assertTrue(response.context["slots"])
+                self.assertEqual(html.elements["time-selection"]["aria-labelledby"], "time-selection-heading")
+                self.assertEqual(html.elements["time-selection-heading"]["tabindex"], "-1")
+                self.assertNotIn("details-heading", html.elements)
+                response, html = self.get_filters(**self.complete, lang=language, time="10:00")
+                self.assertEqual(html.elements["details"]["aria-labelledby"], "details-heading")
+                self.assertEqual(html.elements["details-heading"]["tabindex"], "-1")
+                self.assertEqual(html.elements["id_phone"]["name"], "phone")
+                self.assertIn("required", html.elements["id_phone"])
 
     def test_fetched_time_issues_session_nonce_and_requires_csrf_for_confirmation(self):
         client = Client(enforce_csrf_checks=True)

@@ -1,0 +1,11 @@
+{
+  "name": "alan-barberhouse-ui-audit",
+  "private": true,
+  "scripts": {
+    "test:e2e": "node scripts/run-cypress.cjs",
+    "cypress:install": "node scripts/install-cypress.cjs"
+  },
+  "devDependencies": {
+    "cypress": "^16.2.1"
+  }
+}

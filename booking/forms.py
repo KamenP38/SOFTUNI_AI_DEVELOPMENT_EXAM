@@ -8,7 +8,7 @@ from django.utils.formats import date_format
 
 from catalogue.models import Service
 from .models import Barber
-from .rules import PHONE_ERROR, normalize_phone, replace_hours
+from .rules import PHONE_ERROR, day_off_dates, normalize_phone, replace_hours
 
 WEEKDAYS = [("Monday", "Понеделник"), ("Tuesday", "Вторник"), ("Wednesday", "Сряда"),
             ("Thursday", "Четвъртък"), ("Friday", "Петък"), ("Saturday", "Събота"), ("Sunday", "Неделя")]
@@ -173,6 +173,33 @@ class DayOffForm(forms.Form):
     def __init__(self, *args, language="bg", **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["date"].label = "Дата" if language == "bg" else "Date"
+
+
+class DayOffRangeForm(DayOffForm):
+    end_date = forms.DateField(
+        required=False, widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+    )
+
+    def __init__(self, *args, language="bg", **kwargs):
+        super().__init__(*args, language=language, **kwargs)
+        self.fields["date"].widget.format = "%Y-%m-%d"
+        self.fields["date"].label = "Начална дата" if language == "bg" else "Start date"
+        self.fields["end_date"].label = (
+            "Крайна дата (незадължително)" if language == "bg" else "End date (optional)"
+        )
+        self.fields["end_date"].help_text = (
+            "Включва началната и крайната дата, до 366 дни. "
+            "За един почивен ден оставете крайната дата празна."
+            if language == "bg" else
+            "Includes both start and end dates, up to 366 days. "
+            "Leave the end date blank for a single day off."
+        )
+
+    def clean(self):
+        data = super().clean()
+        if data.get("date") and "end_date" in data:
+            day_off_dates(data["date"], data["end_date"])
+        return data
 
 
 class BarberForm(forms.Form):

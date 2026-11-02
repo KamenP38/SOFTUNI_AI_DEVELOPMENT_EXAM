@@ -65,8 +65,8 @@
                 <span class="auto-refresh-note" hidden>{% t 'Filters refresh automatically when changed.' 'Филтрите се обновяват автоматично при промяна.' %}</span>
             </p>
         </section>
-        <section class="panel">
-            <h2>
+        <section class="panel" id="time-selection" aria-labelledby="time-selection-heading">
+            <h2 id="time-selection-heading" class="booking-step-heading" tabindex="-1">
                 02 ·
                 {% t 'Choose your time' 'Изберете час' %}
             </h2>
@@ -95,8 +95,8 @@
         </section>
     </div>
     {% if form and selected %}
-        <section class="panel details-panel" id="details" tabindex="-1">
-            <h2>
+        <section class="panel details-panel" id="details" tabindex="-1" aria-labelledby="details-heading">
+            <h2 id="details-heading" class="booking-step-heading" tabindex="-1">
                 03 ·
                 {% t 'Confirm your details' 'Потвърдете данните си' %}
             </h2>

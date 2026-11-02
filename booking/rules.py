@@ -1,7 +1,7 @@
 """All booking and schedule mutations serialize on the same barber row."""
 import re
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone as datetime_timezone
+from datetime import date, datetime, timedelta, timezone as datetime_timezone
 from zoneinfo import ZoneInfo
 
 from django.core.exceptions import ValidationError
@@ -13,6 +13,7 @@ from catalogue.models import Service
 from .models import Appointment, Barber, DayOff, WorkingHours
 
 SOFIA = ZoneInfo("Europe/Sofia")
+MAX_DAYS_OFF = 366
 PHONE_ERROR = (
     "Enter 0 or +359 followed by exactly 9 digits (0–9), without spaces or separators, "
     "e.g. 0888123456 or +359888123456. / "
@@ -232,20 +233,49 @@ def replace_hours(barber_id, shifts):
     ])
 
 
-@transaction.atomic
+def day_off_dates(start_date, end_date=None):
+    """Validate and expand a bounded inclusive range for forms and direct callers."""
+    end_date = start_date if end_date is None else end_date
+    if any(not isinstance(day, date) or isinstance(day, datetime) for day in (start_date, end_date)):
+        raise ValidationError("Enter valid dates. / Въведете валидни дати.")
+    if end_date < start_date:
+        raise ValidationError(
+            "End date must be on or after start date. / "
+            "Крайната дата трябва да е на или след началната дата."
+        )
+    day_count = (end_date - start_date).days + 1
+    if day_count > MAX_DAYS_OFF:
+        raise ValidationError(
+            "Choose at most 366 days, including both dates. / "
+            "Изберете най-много 366 дни, включително двете дати."
+        )
+    return {start_date + timedelta(days=offset) for offset in range(day_count)}
+
+
+def add_days_off(barber_id, start_date, end_date=None):
+    """Add all dates together, retaining any days off already in the range."""
+    _change_days_off(barber_id, day_off_dates(start_date, end_date))
+
+
 def change_day_off(barber_id, day, remove=False):
+    """Keep the single-day add/remove interface on the same locked mutation path."""
+    _change_days_off(barber_id, day_off_dates(day), remove=remove)
+
+
+@transaction.atomic
+def _change_days_off(barber_id, dates, remove=False):
     barber = Barber.objects.select_for_update().get(pk=barber_id)
-    days_off = set(barber.days_off.values_list("date", flat=True))
-    if remove:
-        days_off.discard(day)
-    else:
-        days_off.add(day)
+    existing = set(barber.days_off.values_list("date", flat=True))
+    days_off = existing - dates if remove else existing | dates
     shifts = {s.weekday: (s.opens_at, s.closes_at) for s in barber.working_hours.all()}
+    # Validate the complete proposal under the booking lock before writing any date.
     validate_schedule(barber, shifts, days_off)
     if remove:
-        barber.days_off.filter(date=day).delete()
+        barber.days_off.filter(date__in=dates).delete()
     else:
-        DayOff.objects.get_or_create(barber=barber, date=day)
+        DayOff.objects.bulk_create([
+            DayOff(barber=barber, date=day) for day in sorted(dates - existing)
+        ])
 
 
 @transaction.atomic
