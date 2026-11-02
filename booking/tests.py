@@ -456,6 +456,23 @@ class StaffTests(BookingFixtures, TestCase):
             appointment.refresh_from_db()
             self.assertIsNotNone(appointment.cancelled_at)
 
+    def test_cancel_redirect_drops_the_displayed_schedule_filters(self):
+        # Reproduces a known UX finding (docs/ui-audit.md #5): cancelling from a
+        # filtered day/barber view returns to the default schedule instead of
+        # the filters the user was reviewing. This pins the current behavior so
+        # a future template/view change is a deliberate, reviewed decision.
+        appointment = self.reserve(barber_id=self.barber.pk)
+        self.client.force_login(self.barber.user)
+        filtered_schedule = reverse("booking:schedule") + f"?date={NOW.date()}&view=day&barber={self.barber.pk}"
+        response = self.client.post(
+            reverse("booking:staff_cancel", args=[appointment.pk]),
+            HTTP_REFERER=f"http://testserver{filtered_schedule}",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("booking:schedule"))
+        self.assertNotIn("date=", response.url)
+        self.assertNotIn("barber=", response.url)
+
     def test_own_hours_and_days_off_edits_conflict_feedback(self):
         self.client.force_login(self.barber.user)
         url = reverse("booking:hours", args=[self.barber.pk])
