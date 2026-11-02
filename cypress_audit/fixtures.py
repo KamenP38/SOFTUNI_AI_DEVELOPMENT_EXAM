@@ -85,6 +85,21 @@ def snapshot():
     return result
 
 
+def exam_presentation():
+    """Relabel the already-reset synthetic rows for the exam walkthrough only."""
+    Service.objects.filter(name="Audit Haircut").update(
+        name="Classic Haircut", description="A tailored cut, finished and styled.")
+    Service.objects.filter(name="Audit Beard").update(
+        name="Beard Trim", description="Clean lines and a carefully shaped beard.")
+    Barber.objects.filter(user__username="alan").update(name="Demo Alan")
+    Barber.objects.filter(user__username="boris").update(name="Demo Boris")
+    Appointment.objects.filter(barber__user__username="alan").update(
+        customer_name="Demo Daniel", service_name="Classic Haircut")
+    Appointment.objects.filter(barber__user__username="boris").update(
+        customer_name="Demo Martin", service_name="Classic Haircut")
+    return True
+
+
 def session(role):
     if role not in {"owner", "alan", "boris", "inactive", "outsider"}:
         raise ValueError("Unknown synthetic role")
@@ -104,6 +119,8 @@ if __name__ == "__main__":
         result = reset()
     elif action == "snapshot":
         result = snapshot()
+    elif action == "exam_presentation":
+        result = exam_presentation()
     elif action == "session":
         result = session(payload)
     elif action == "change_quote":

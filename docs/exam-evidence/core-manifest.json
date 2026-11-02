@@ -1,0 +1,44 @@
+[
+  {
+    "role": "OWNER",
+    "filename": "core-owner-created.png",
+    "step_title": "New barber accepts bookings",
+    "action": "Create Demo Nikolay through the owner form.",
+    "expected_outcome": "A new barber card shows Accepting bookings and assigned services.",
+    "actual_outcome": "The new card shows Accepting bookings, Classic Haircut and Beard Trim.",
+    "path": "docs/exam-evidence/screenshots/core-owner-created.png",
+    "width": 352,
+    "height": 236,
+    "dimensions": {
+      "width": 352,
+      "height": 236
+    },
+    "language": "en",
+    "viewport": {
+      "width": 1200,
+      "height": 800
+    },
+    "name": "core-owner-created"
+  },
+  {
+    "role": "CLIENT",
+    "filename": "core-client-confirmed.png",
+    "step_title": "Successful client reservation",
+    "action": "Submit the completed contact form for the selected visit.",
+    "expected_outcome": "A booking confirmation shows the visit details.",
+    "actual_outcome": "You are booked in appears with service, barber, date, time, duration and price.",
+    "path": "docs/exam-evidence/screenshots/core-client-confirmed.png",
+    "width": 720,
+    "height": 420,
+    "dimensions": {
+      "width": 720,
+      "height": 420
+    },
+    "language": "en",
+    "viewport": {
+      "width": 1200,
+      "height": 800
+    },
+    "name": "core-client-confirmed"
+  }
+]

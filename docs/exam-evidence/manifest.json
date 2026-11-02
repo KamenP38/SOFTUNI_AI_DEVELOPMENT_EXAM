@@ -1,0 +1,750 @@
+{
+  "run": {
+    "command": "npm run test:e2e -- cypress/e2e/exam-flows.cy.js",
+    "passed": 3,
+    "failed": 0,
+    "pending": 0,
+    "skipped": 0,
+    "browser": "electron",
+    "browser_version": "146.0.7680.216",
+    "cypress_version": "16.2.1",
+    "database": "isolated synthetic SQLite",
+    "frozen_application_date": "2026-11-15",
+    "viewport": "1200x800",
+    "language": "en",
+    "screenshots": 32,
+    "compact_core_captures": 2,
+    "tests": [
+      {
+        "title": "OWNER: sign in, create barber, view schedule, edit service and save working hours and days off",
+        "state": "passed"
+      },
+      {
+        "title": "BARBER: sign in, change own services and hours, add days off and view a private colleague schedule",
+        "state": "passed"
+      },
+      {
+        "title": "CLIENT: view services, select service/barber/date/time and confirm a real successful reservation",
+        "state": "passed"
+      }
+    ]
+  },
+  "screenshots": [
+    {
+      "ordinal": 1,
+      "role": "OWNER",
+      "step_title": "home staff entry",
+      "action": "Open the homepage and scroll to its footer.",
+      "expected_outcome": "The public homepage exposes the Staff sign in link.",
+      "actual_outcome": "The public homepage exposes the Staff sign in link.",
+      "filename": "01-owner-home-staff-entry.png",
+      "path": "docs/exam-evidence/screenshots/01-owner-home-staff-entry.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 2,
+      "role": "OWNER",
+      "step_title": "login form",
+      "action": "Enter the synthetic staff username and masked password.",
+      "expected_outcome": "The sign-in form is ready to submit.",
+      "actual_outcome": "The sign-in form is ready to submit.",
+      "filename": "02-owner-login-form.png",
+      "path": "docs/exam-evidence/screenshots/02-owner-login-form.png",
+      "width": 720,
+      "height": 800,
+      "dimensions": {
+        "width": 720,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 3,
+      "role": "OWNER",
+      "step_title": "dashboard",
+      "action": "Submit Sign in.",
+      "expected_outcome": "The correct role dashboard is displayed.",
+      "actual_outcome": "The correct role dashboard is displayed.",
+      "filename": "03-owner-dashboard.png",
+      "path": "docs/exam-evidence/screenshots/03-owner-dashboard.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 4,
+      "role": "OWNER",
+      "step_title": "new barber account",
+      "action": "Open Add barber and fill username, display name and password confirmation.",
+      "expected_outcome": "The new synthetic barber account fields are filled; passwords stay masked.",
+      "actual_outcome": "The new synthetic barber account fields are filled; passwords stay masked.",
+      "filename": "04-owner-new-barber-account.png",
+      "path": "docs/exam-evidence/screenshots/04-owner-new-barber-account.png",
+      "width": 720,
+      "height": 800,
+      "dimensions": {
+        "width": 720,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 5,
+      "role": "OWNER",
+      "step_title": "new barber services hours",
+      "action": "Keep both active services and set Sunday as closed.",
+      "expected_outcome": "Initial weekly hours are visible with Sunday closed.",
+      "actual_outcome": "Initial weekly hours are visible with Sunday closed.",
+      "filename": "05-owner-new-barber-services-hours.png",
+      "path": "docs/exam-evidence/screenshots/05-owner-new-barber-services-hours.png",
+      "width": 720,
+      "height": 800,
+      "dimensions": {
+        "width": 720,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 6,
+      "role": "OWNER",
+      "step_title": "barber created",
+      "action": "Save barber.",
+      "expected_outcome": "Profile saved appears and Demo Nikolay is accepting bookings.",
+      "actual_outcome": "Profile saved appears and Demo Nikolay is accepting bookings.",
+      "filename": "06-owner-barber-created.png",
+      "path": "docs/exam-evidence/screenshots/06-owner-barber-created.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 7,
+      "role": "OWNER",
+      "step_title": "team schedule",
+      "action": "Open Barbers schedules, choose 17 November 2026, all barbers and day view, then Show.",
+      "expected_outcome": "The owner sees both synthetic appointments and their contact details.",
+      "actual_outcome": "The owner sees both synthetic appointments and their contact details.",
+      "filename": "07-owner-team-schedule.png",
+      "path": "docs/exam-evidence/screenshots/07-owner-team-schedule.png",
+      "width": 1089,
+      "height": 365,
+      "dimensions": {
+        "width": 1089,
+        "height": 365
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 8,
+      "role": "OWNER",
+      "step_title": "service catalogue",
+      "action": "Open Manage services.",
+      "expected_outcome": "The catalogue shows durations, prices and service-edit links.",
+      "actual_outcome": "The catalogue shows durations, prices and service-edit links.",
+      "filename": "08-owner-service-catalogue.png",
+      "path": "docs/exam-evidence/screenshots/08-owner-service-catalogue.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 9,
+      "role": "OWNER",
+      "step_title": "service price edit",
+      "action": "Open Classic Haircut and change its price to 22.00 EUR.",
+      "expected_outcome": "The service form contains the new price.",
+      "actual_outcome": "The service form contains the new price.",
+      "filename": "09-owner-service-price-edit.png",
+      "path": "docs/exam-evidence/screenshots/09-owner-service-price-edit.png",
+      "width": 720,
+      "height": 800,
+      "dimensions": {
+        "width": 720,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 10,
+      "role": "OWNER",
+      "step_title": "service saved",
+      "action": "Save service.",
+      "expected_outcome": "The catalogue shows 22.00 EUR; existing bookings retain their 20.00 EUR quote.",
+      "actual_outcome": "The catalogue shows 22.00 EUR; existing bookings retain their 20.00 EUR quote.",
+      "filename": "10-owner-service-saved.png",
+      "path": "docs/exam-evidence/screenshots/10-owner-service-saved.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 11,
+      "role": "OWNER",
+      "step_title": "weekly hours edit",
+      "action": "Change Monday opening time from 09:00 to 10:00.",
+      "expected_outcome": "The weekly-hours form contains the new opening time.",
+      "actual_outcome": "The weekly-hours form contains the new opening time.",
+      "filename": "11-owner-weekly-hours-edit.png",
+      "path": "docs/exam-evidence/screenshots/11-owner-weekly-hours-edit.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 12,
+      "role": "OWNER",
+      "step_title": "weekly hours saved",
+      "action": "Save weekly hours.",
+      "expected_outcome": "Schedule saved is visible and the database stores Monday 10:00 opening.",
+      "actual_outcome": "Schedule saved is visible and the database stores Monday 10:00 opening.",
+      "filename": "12-owner-weekly-hours-saved.png",
+      "path": "docs/exam-evidence/screenshots/12-owner-weekly-hours-saved.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 13,
+      "role": "OWNER",
+      "step_title": "days off range",
+      "action": "Enter 23–25 November 2026 as the day-off range.",
+      "expected_outcome": "Both inclusive range endpoints are visible.",
+      "actual_outcome": "Both inclusive range endpoints are visible.",
+      "filename": "13-owner-days-off-range.png",
+      "path": "docs/exam-evidence/screenshots/13-owner-days-off-range.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 14,
+      "role": "OWNER",
+      "step_title": "days off saved",
+      "action": "Add days off.",
+      "expected_outcome": "The three dates are listed and stored; existing appointments remain unchanged.",
+      "actual_outcome": "The three dates are listed and stored; existing appointments remain unchanged.",
+      "filename": "14-owner-days-off-saved.png",
+      "path": "docs/exam-evidence/screenshots/14-owner-days-off-saved.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 15,
+      "role": "BARBER",
+      "step_title": "home staff entry",
+      "action": "Open the homepage and scroll to its footer.",
+      "expected_outcome": "The public homepage exposes the Staff sign in link.",
+      "actual_outcome": "The public homepage exposes the Staff sign in link.",
+      "filename": "15-barber-home-staff-entry.png",
+      "path": "docs/exam-evidence/screenshots/15-barber-home-staff-entry.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 16,
+      "role": "BARBER",
+      "step_title": "login form",
+      "action": "Enter the synthetic staff username and masked password.",
+      "expected_outcome": "The sign-in form is ready to submit.",
+      "actual_outcome": "The sign-in form is ready to submit.",
+      "filename": "16-barber-login-form.png",
+      "path": "docs/exam-evidence/screenshots/16-barber-login-form.png",
+      "width": 720,
+      "height": 800,
+      "dimensions": {
+        "width": 720,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 17,
+      "role": "BARBER",
+      "step_title": "dashboard",
+      "action": "Submit Sign in.",
+      "expected_outcome": "The correct role dashboard is displayed.",
+      "actual_outcome": "The correct role dashboard is displayed.",
+      "filename": "17-barber-dashboard.png",
+      "path": "docs/exam-evidence/screenshots/17-barber-dashboard.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 18,
+      "role": "BARBER",
+      "step_title": "own services edit",
+      "action": "Open My services and retain only Classic Haircut.",
+      "expected_outcome": "Only the intended bookable service remains checked.",
+      "actual_outcome": "Only the intended bookable service remains checked.",
+      "filename": "18-barber-own-services-edit.png",
+      "path": "docs/exam-evidence/screenshots/18-barber-own-services-edit.png",
+      "width": 720,
+      "height": 800,
+      "dimensions": {
+        "width": 720,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 19,
+      "role": "BARBER",
+      "step_title": "own services saved",
+      "action": "Save services.",
+      "expected_outcome": "Services saved appears and the database contains only the Classic Haircut assignment.",
+      "actual_outcome": "Services saved appears and the database contains only the Classic Haircut assignment.",
+      "filename": "19-barber-own-services-saved.png",
+      "path": "docs/exam-evidence/screenshots/19-barber-own-services-saved.png",
+      "width": 720,
+      "height": 800,
+      "dimensions": {
+        "width": 720,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 20,
+      "role": "BARBER",
+      "step_title": "weekly hours edit",
+      "action": "Change Monday opening time from 09:00 to 10:00.",
+      "expected_outcome": "The weekly-hours form contains the new opening time.",
+      "actual_outcome": "The weekly-hours form contains the new opening time.",
+      "filename": "20-barber-weekly-hours-edit.png",
+      "path": "docs/exam-evidence/screenshots/20-barber-weekly-hours-edit.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 21,
+      "role": "BARBER",
+      "step_title": "weekly hours saved",
+      "action": "Save weekly hours.",
+      "expected_outcome": "Schedule saved is visible and the database stores Monday 10:00 opening.",
+      "actual_outcome": "Schedule saved is visible and the database stores Monday 10:00 opening.",
+      "filename": "21-barber-weekly-hours-saved.png",
+      "path": "docs/exam-evidence/screenshots/21-barber-weekly-hours-saved.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 22,
+      "role": "BARBER",
+      "step_title": "days off range",
+      "action": "Enter 23–25 November 2026 as the day-off range.",
+      "expected_outcome": "Both inclusive range endpoints are visible.",
+      "actual_outcome": "Both inclusive range endpoints are visible.",
+      "filename": "22-barber-days-off-range.png",
+      "path": "docs/exam-evidence/screenshots/22-barber-days-off-range.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 23,
+      "role": "BARBER",
+      "step_title": "days off saved",
+      "action": "Add days off.",
+      "expected_outcome": "The three dates are listed and stored; existing appointments remain unchanged.",
+      "actual_outcome": "The three dates are listed and stored; existing appointments remain unchanged.",
+      "filename": "23-barber-days-off-saved.png",
+      "path": "docs/exam-evidence/screenshots/23-barber-days-off-saved.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 24,
+      "role": "BARBER",
+      "step_title": "colleague schedule privacy",
+      "action": "Open Barbers schedules, choose 17 November 2026, all barbers and day view, then Show.",
+      "expected_outcome": "The barber sees their own customer details; the colleague reservation says Booked with no customer contacts.",
+      "actual_outcome": "The barber sees their own customer details; the colleague reservation says Booked with no customer contacts.",
+      "filename": "24-barber-colleague-schedule-privacy.png",
+      "path": "docs/exam-evidence/screenshots/24-barber-colleague-schedule-privacy.png",
+      "width": 1089,
+      "height": 253,
+      "dimensions": {
+        "width": 1089,
+        "height": 253
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 25,
+      "role": "CLIENT",
+      "step_title": "homepage services",
+      "action": "Open the homepage and choose Services in the navigation.",
+      "expected_outcome": "The public menu displays service descriptions, durations and prices.",
+      "actual_outcome": "The public menu displays service descriptions, durations and prices.",
+      "filename": "25-client-homepage-services.png",
+      "path": "docs/exam-evidence/screenshots/25-client-homepage-services.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 26,
+      "role": "CLIENT",
+      "step_title": "booking start",
+      "action": "Click the homepage Book a visit button.",
+      "expected_outcome": "The booking page opens with service, barber and date choices.",
+      "actual_outcome": "The booking page opens with service, barber and date choices.",
+      "filename": "26-client-booking-start.png",
+      "path": "docs/exam-evidence/screenshots/26-client-booking-start.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 27,
+      "role": "CLIENT",
+      "step_title": "service selected",
+      "action": "Select Classic Haircut.",
+      "expected_outcome": "The service is selected and compatible options refresh.",
+      "actual_outcome": "The service is selected and compatible options refresh.",
+      "filename": "27-client-service-selected.png",
+      "path": "docs/exam-evidence/screenshots/27-client-service-selected.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 28,
+      "role": "CLIENT",
+      "step_title": "barber selected",
+      "action": "Select Demo Alan.",
+      "expected_outcome": "The barber is selected and the calendar shows matching dates.",
+      "actual_outcome": "The barber is selected and the calendar shows matching dates.",
+      "filename": "28-client-barber-selected.png",
+      "path": "docs/exam-evidence/screenshots/28-client-barber-selected.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 29,
+      "role": "CLIENT",
+      "step_title": "date and available times",
+      "action": "Choose 17 November 2026 in the calendar.",
+      "expected_outcome": "Available appointment times are displayed for the selected service, barber and date.",
+      "actual_outcome": "Available appointment times are displayed for the selected service, barber and date.",
+      "filename": "29-client-date-and-available-times.png",
+      "path": "docs/exam-evidence/screenshots/29-client-date-and-available-times.png",
+      "width": 1200,
+      "height": 800,
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 30,
+      "role": "CLIENT",
+      "step_title": "time selected contact form",
+      "action": "Choose the available 09:00 time.",
+      "expected_outcome": "The contact form opens for the selected visit.",
+      "actual_outcome": "The contact form opens for the selected visit.",
+      "filename": "30-client-time-selected-contact-form.png",
+      "path": "docs/exam-evidence/screenshots/30-client-time-selected-contact-form.png",
+      "width": 720,
+      "height": 800,
+      "dimensions": {
+        "width": 720,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 31,
+      "role": "CLIENT",
+      "step_title": "contact details ready",
+      "action": "Enter the synthetic client name, required phone and optional example.invalid email.",
+      "expected_outcome": "The completed contact form is ready; no new appointment has been created yet.",
+      "actual_outcome": "The completed contact form is ready; no new appointment has been created yet.",
+      "filename": "31-client-contact-details-ready.png",
+      "path": "docs/exam-evidence/screenshots/31-client-contact-details-ready.png",
+      "width": 720,
+      "height": 800,
+      "dimensions": {
+        "width": 720,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    },
+    {
+      "ordinal": 32,
+      "role": "CLIENT",
+      "step_title": "booking confirmed",
+      "action": "Submit the completed booking form.",
+      "expected_outcome": "You are booked in appears with the reservation summary; exactly one new appointment is persisted.",
+      "actual_outcome": "You are booked in appears with the reservation summary; exactly one new appointment is persisted.",
+      "filename": "32-client-booking-confirmed.png",
+      "path": "docs/exam-evidence/screenshots/32-client-booking-confirmed.png",
+      "width": 720,
+      "height": 800,
+      "dimensions": {
+        "width": 720,
+        "height": 800
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      }
+    }
+  ],
+  "core_screenshots": [
+    {
+      "role": "OWNER",
+      "filename": "core-owner-created.png",
+      "step_title": "New barber accepts bookings",
+      "action": "Create Demo Nikolay through the owner form.",
+      "expected_outcome": "A new barber card shows Accepting bookings and assigned services.",
+      "actual_outcome": "The new card shows Accepting bookings, Classic Haircut and Beard Trim.",
+      "path": "docs/exam-evidence/screenshots/core-owner-created.png",
+      "width": 352,
+      "height": 236,
+      "dimensions": {
+        "width": 352,
+        "height": 236
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      },
+      "name": "core-owner-created"
+    },
+    {
+      "role": "CLIENT",
+      "filename": "core-client-confirmed.png",
+      "step_title": "Successful client reservation",
+      "action": "Submit the completed contact form for the selected visit.",
+      "expected_outcome": "A booking confirmation shows the visit details.",
+      "actual_outcome": "You are booked in appears with service, barber, date, time, duration and price.",
+      "path": "docs/exam-evidence/screenshots/core-client-confirmed.png",
+      "width": 720,
+      "height": 420,
+      "dimensions": {
+        "width": 720,
+        "height": 420
+      },
+      "language": "en",
+      "viewport": {
+        "width": 1200,
+        "height": 800
+      },
+      "name": "core-client-confirmed"
+    }
+  ]
+}

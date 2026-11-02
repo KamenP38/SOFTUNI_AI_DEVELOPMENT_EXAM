@@ -1,0 +1,30 @@
+{
+  "command": "npm run test:e2e -- cypress/e2e/exam-flows.cy.js",
+  "passed": 3,
+  "failed": 0,
+  "pending": 0,
+  "skipped": 0,
+  "browser": "electron",
+  "browser_version": "146.0.7680.216",
+  "cypress_version": "16.2.1",
+  "database": "isolated synthetic SQLite",
+  "frozen_application_date": "2026-11-15",
+  "viewport": "1200x800",
+  "language": "en",
+  "screenshots": 32,
+  "compact_core_captures": 2,
+  "tests": [
+    {
+      "title": "OWNER: sign in, create barber, view schedule, edit service and save working hours and days off",
+      "state": "passed"
+    },
+    {
+      "title": "BARBER: sign in, change own services and hours, add days off and view a private colleague schedule",
+      "state": "passed"
+    },
+    {
+      "title": "CLIENT: view services, select service/barber/date/time and confirm a real successful reservation",
+      "state": "passed"
+    }
+  ]
+}

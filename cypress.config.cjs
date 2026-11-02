@@ -44,6 +44,7 @@ module.exports = defineConfig({
       on('task', {
         'db:reset': () => fixture('reset'),
         'db:snapshot': () => fixture('snapshot'),
+        'db:examPresentation': () => fixture('exam_presentation'),
         'auth:session': (role) => fixture('session', role),
         'db:changeQuote': () => fixture('change_quote'),
         'db:occupySlot': () => fixture('occupy_slot'),
