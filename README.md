@@ -4,6 +4,22 @@ A single-shop Django site with a bilingual, server-rendered homepage, online app
 
 The homepage follows the supplied dark, cream and gold design: a split photo hero, service cards, six gallery photos, testimonials and a contact section. Its appointment links open `/book/`; the phone link remains available. The supplied address and three review excerpts are static reference content, not a live Google feed or newly verified claims. Individual barber availability comes from their saved schedules. Update both language dictionaries when shop details change.
 
+## Before you start
+
+- Install Git and Python 3.11, including pip and virtual-environment support. Python 3.11 is the version used for this project's recorded checks.
+- You do **not** need Node.js, PostgreSQL or a frontend build to run the local website. SQLite is included with Python.
+- For the optional JavaScript/Cypress tests, install Node.js 24 with npm. Cypress also needs Linux system libraries listed under [Cypress UI audit](#cypress-ui-audit).
+- Commands below assume a terminal on your own development machine. Do not reuse production database credentials.
+
+Clone the repository and enter it (same commands on Windows and Linux):
+
+```text
+git clone https://github.com/KamenP38/SOFTUNI_AI_DEVELOPMENT_EXAM.git
+cd SOFTUNI_AI_DEVELOPMENT_EXAM
+```
+
+Already have a checkout? Open a terminal in its root, where `manage.py` and `requirements.txt` are located. Follow **one** platform-specific setup below. Virtual-environment activation is unnecessary.
+
 ## Local setup (Windows PowerShell)
 
 Run these commands from the repository root with Python 3.11 installed. All dependencies stay in this project's virtual environment; activation is unnecessary.
@@ -15,21 +31,55 @@ $env:DJANGO_DEBUG = "1"
 $env:DJANGO_SECRET_KEY = (& .\.venv\Scripts\python.exe -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())")
 .\.venv\Scripts\python.exe manage.py migrate
 .\.venv\Scripts\python.exe manage.py seed_demo_services
+.\.venv\Scripts\python.exe manage.py create_shop_owner
 .\.venv\Scripts\python.exe manage.py runserver
 ```
 
 Open <http://127.0.0.1:8000/>. Stop the server with Ctrl+C. Environment variables above apply to the current PowerShell session; set them again in a new terminal. A `.env` file is **not** automatically loaded. Keep secrets out of source control.
 
+`create_shop_owner` prompts for your chosen username and password; create the owner once, not every time you start the server. If `py -3.11` is unavailable, install Python 3.11 with its Windows launcher before continuing.
+
+## Local setup (Linux Bash)
+
+Ensure `python3.11 --version` works. Install Python 3.11 and its matching venv/pip support through your distribution's supported packages if needed. On Debian/Ubuntu systems that provide Python 3.11 packages, the venv package is `python3.11-venv`; package names and available Python versions differ between distributions.
+
+```bash
+python3.11 -m venv .venv
+./.venv/bin/python -m pip install -r requirements.txt
+export DJANGO_DEBUG=1
+export DJANGO_SECRET_KEY="$(./.venv/bin/python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')"
+./.venv/bin/python manage.py migrate
+./.venv/bin/python manage.py seed_demo_services
+./.venv/bin/python manage.py create_shop_owner
+./.venv/bin/python manage.py runserver
+```
+
+Choose the owner's username and password when prompted. Open <http://127.0.0.1:8000/> and stop the server with Ctrl+C. Set the environment variables again in each new shell; `.env` is reference material and is not loaded automatically. Use the virtual environment rather than `sudo pip`.
+
+### Restarting and your first booking
+
+After the initial setup, set `DJANGO_DEBUG=1` using your shell's syntax and run the platform's virtual-environment Python with `manage.py runserver`. Reuse your secret key to retain sessions; a new or automatically generated key can invalidate existing logins. The database and accounts persist between restarts. Do not repeat owner creation or service seeding for routine startup.
+
+1. Open the homepage and use **Staff sign in** in the footer, or visit `/staff/login/`.
+2. Sign in with the owner you created. Choose **Add barber**, enter a new username/password, assign services, and review the weekly hours before saving.
+3. Use **Hours & days off** to adjust availability. A fresh database has no barbers, so seeding services alone does not make any appointments bookable.
+4. Open **Book a visit**, choose a service, barber, available date and time, then enter a name and valid phone number to confirm. Email is optional; no email/SMS is sent.
+5. Use **Barbers schedules** on the staff dashboard to see the new appointment. To try the barber role, sign out and log in with the barber's credentials.
+
+If port 8000 is busy, use `manage.py runserver 8002` and open <http://127.0.0.1:8002/> instead. Missing styles or an HTTPS redirect during local preview usually mean `DJANGO_DEBUG=1` was not set in the terminal running Django. A missing-table error means migrations have not run against the selected database.
+
 SQLite (`db.sqlite3`, ignored by Git) remains the default for local preview and functional tests. PostgreSQL is required for the documented concurrent-booking guarantee. SQLite does not implement row locks or the PostgreSQL exclusion constraint; a successful SQLite test run is not evidence of production concurrency safety.
 
 ## Owner setup and everyday use
 
-After migrations, create the first shop owner interactively in a configured terminal:
+The initial setup above already creates your owner. If you skipped that step, run this once after migrations in a configured Windows terminal:
 
 ```powershell
 $env:DJANGO_DEBUG = "1"
 .\.venv\Scripts\python.exe manage.py create_shop_owner
 ```
+
+On Linux, use `export DJANGO_DEBUG=1` and `./.venv/bin/python manage.py create_shop_owner` instead.
 
 The command prompts for a unique username and a confirmed password, applies Django password validation and hashing, and creates an ordinary active user with a `ShopManager` profile. It does not grant staff or superuser privileges. No credentials are shipped. Sign in at <http://127.0.0.1:8000/staff/login/>.
 
@@ -122,6 +172,25 @@ $env:POSTGRES_PORT = "5432"
 
 Use an isolated local database and synthetic data for tests. Do not point test commands at a production database. Moving from SQLite to PostgreSQL does not copy existing data.
 
+On Linux, the equivalent optional PostgreSQL configuration is:
+
+```bash
+export DJANGO_DEBUG=1
+export DATABASE_BACKEND=postgresql
+export POSTGRES_DB=barber_shop
+export POSTGRES_USER=barber_shop
+read -rsp 'Local PostgreSQL password: ' POSTGRES_PASSWORD; echo
+export POSTGRES_PASSWORD
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
+./.venv/bin/python manage.py migrate
+./.venv/bin/python manage.py seed_demo_services
+./.venv/bin/python manage.py create_shop_owner
+./.venv/bin/python manage.py runserver
+```
+
+Install/start PostgreSQL and create the named role and database first; these commands configure Django, not PostgreSQL itself. Create an owner only if the selected database does not already contain one. To return to SQLite, set `DATABASE_BACKEND` to `sqlite` in the same terminal.
+
 For PostgreSQL verification, use a disposable development role/database and the same `POSTGRES_*` variables, then run `manage.py test`. Django creates a separate `test_<POSTGRES_DB>` database; the role needs `CREATEDB` and permission to install `btree_gist` there. This validates the vendor-specific migration and any PostgreSQL-only concurrency tests. SQLite runs may intentionally skip PostgreSQL-specific tests. Never use production credentials or a production database for verification.
 
 Debug-off settings require a secret, enable HTTPS redirects and secure session/CSRF cookies. Deployment is not included: configure a production WSGI/ASGI server, HTTPS, allowed hosts and static-file serving before deploying. Review `manage.py check --deploy` against the intended environment. The development server is for local use only.
@@ -139,6 +208,8 @@ Debug-off settings require a secret, enable HTTPS redirects and secure session/C
 
 ## Checks
 
+Run these from the repository root after installing Python dependencies. These are optional for browsing the site. Windows PowerShell:
+
 ```powershell
 $env:DJANGO_DEBUG = "1"
 .\.venv\Scripts\python.exe manage.py check
@@ -146,22 +217,84 @@ $env:DJANGO_DEBUG = "1"
 .\.venv\Scripts\python.exe manage.py test
 ```
 
-Run `node booking/test_inline_booking.cjs` for dependency-free request-controller unit checks covering queued refreshes, stale responses, customer drafts and retries; these are not browser or calendar visual tests.
+Linux Bash:
+
+```bash
+export DJANGO_DEBUG=1
+./.venv/bin/python manage.py check
+./.venv/bin/python manage.py makemigrations --check --dry-run
+./.venv/bin/python manage.py test
+```
+
+With Node.js installed, run `node --test booking/test_inline_booking.cjs` on either platform for dependency-free request-controller unit checks covering queued refreshes, stale responses, customer drafts and retries; these are not browser or calendar visual tests.
 
 ### Cypress UI audit
 
 The repository-local `test-agent` follows `.agents/skills/cypress-author/SKILL.md` for browser test authoring. The skill and its references are installed only in this project. Existing Django tests remain responsible for backend rules and database-specific concurrency checks.
 
+Windows PowerShell (use `npm.cmd` to avoid PowerShell execution-policy restrictions on `npm.ps1`):
+
 ```powershell
 $env:CYPRESS_CACHE_FOLDER = Join-Path (Get-Location) '.artifacts/cypress-cache'
 $env:npm_config_cache = Join-Path (Get-Location) '.artifacts/npm-cache'
+npm.cmd ci
+npm.cmd run cypress:install
+npm.cmd run test:e2e
+```
+
+Linux requires browser libraries even for headless tests. For Ubuntu 24.04 and newer:
+
+```bash
+sudo apt-get update
+sudo apt-get install libgtk-3-0t64 libgbm-dev libnotify-dev libnss3 libxss1 libasound2t64 libxtst6 xauth xvfb
+```
+
+For Ubuntu 22.04, use `libgtk-3-0` and `libasound2` instead of their `t64` variants. For other distributions, follow the [official Cypress Linux prerequisites](https://docs.cypress.io/app/get-started/install-cypress#linux-prerequisites).
+
+Then, as your normal user, from the repository root:
+
+```bash
+export CYPRESS_CACHE_FOLDER="$PWD/.artifacts/cypress-cache"
+export npm_config_cache="$PWD/.artifacts/npm-cache"
 npm ci
+npm run cypress:install
 npm run test:e2e
 ```
+
+The explicit install command downloads the Cypress browser binary even if npm did not run dependency installation scripts. Keep the `.venv` directory name: the runner selects `.venv/Scripts/python.exe` on Windows and `.venv/bin/python` on Linux. The runner uses the bundled Electron browser, so a separate Chrome installation is unnecessary.
 
 The runner starts and stops its own loopback Django server on port 8766 using `cypress_audit.settings`. It refuses an occupied port and verifies the test server identity. Fixtures reset only `.artifacts/cypress-audit.sqlite3`; never use these fixtures with shop/customer data. The audit freezes Django's clock at 15 November 2026 so month navigation and future bookings are repeatable. Tests use synthetic accounts, compare business data before/after actions, and leave screenshots and results under `.artifacts/cypress/`. Node dependencies and downloaded browser binaries are ignored by Git. This test setup is not a production deployment configuration.
 
 See [the UI audit report](docs/ui-audit.md) for tested actions, findings and coverage limits. To run one spec, pass its path, for example `npm run test:e2e -- cypress/e2e/staff.cy.js`.
+
+### Recorded results and exam evidence
+
+The [independent Copilot audit](docs/independent-audit.md), dated 2 November 2026, reports:
+
+| Check | Recorded result |
+| --- | --- |
+| Django tests | 138 total: 133 passed, 5 PostgreSQL-only checks skipped |
+| JavaScript unit tests | 7 passed |
+| Cypress | 75 total: 72 passed, 3 failed |
+| Owner, barber and client exam journeys | All 3 passed (included in the Cypress total) |
+| Django system checks / migration drift | No issues / no pending model changes |
+
+The three browser failures concern losing a draft on language switch, confirming a changed price/duration without reconfirmation, and Enter-key date activation in Electron. The keyboard cause remains unconfirmed in another browser. PostgreSQL concurrency tests still need valid test credentials. These are dated Windows results, not a claim that the full suite has been verified on Linux.
+
+The [exam evidence index](docs/exam-evidence/README.md) includes 32 step screenshots and two compact captures, plus manifests and results. To regenerate them, run the focused spec first, then the exporter:
+
+```powershell
+# Windows PowerShell, after Cypress setup
+npm.cmd run test:e2e -- cypress/e2e/exam-flows.cy.js
+if ($LASTEXITCODE -eq 0) { .\.venv\Scripts\python.exe scripts/export-exam-evidence.py }
+```
+
+```bash
+# Linux Bash, after Cypress setup
+npm run test:e2e -- cypress/e2e/exam-flows.cy.js && ./.venv/bin/python scripts/export-exam-evidence.py
+```
+
+The exporter accepts only a successful focused three-journey run and replaces the committed evidence files. A full audit run does not satisfy that requirement. Review regenerated screenshots and manifests before committing them.
 
 The audit currently retains failing checks for findings that need review; a nonzero result should be investigated using the report, not suppressed by skipping those tests.
 
